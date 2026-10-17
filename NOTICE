@@ -1,0 +1,11 @@
+This repository contains a modified version of the Trellis workflow template.
+
+Upstream: https://github.com/mindfold-ai/Trellis
+Upstream license: AGPL-3.0-only
+File: workflows/matt/workflow.md (based on the bundled .trellis/workflow.md)
+
+Modifications: integration of Matt's spec-driven engineering loop
+(grill -> to-spec -> to-tickets -> implement + tdd -> code-review)
+into Trellis's Plan / Execute / Finish phases.
+
+The full AGPL-3.0 license text is in LICENSE.

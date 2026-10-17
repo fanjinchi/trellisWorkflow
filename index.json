@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "matt",
+      "type": "workflow",
+      "name": "Matt Spec-Driven Trellis Workflow",
+      "description": "Trellis Plan / Execute / Finish workflow integrated with Matt's grill → to-spec → to-tickets → implement + tdd → code-review loop",
+      "path": "workflows/matt/workflow.md",
+      "tags": [
+        "workflow",
+        "matt",
+        "spec-driven",
+        "tdd",
+        "code-review"
+      ]
+    }
+  ]
+}
