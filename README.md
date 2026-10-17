@@ -45,6 +45,17 @@ trellis workflow --marketplace gh:fanjinchi/trellisWorkflow --template matt --fo
 trellis workflow --marketplace gh:fanjinchi/trellisWorkflow --template matt --create-new
 ```
 
+### 备用安装（raw.githubusercontent 被墙或超时）
+
+如果 `--list` / `--template` 报 `Could not reach registry index` 或超时，用 `gh` 直接取文件，效果等价：
+
+```bash
+gh api repos/fanjinchi/trellisWorkflow/contents/workflows/matt/workflow.md \
+  -H 'Accept: application/vnd.github.raw' > .trellis/workflow.md
+```
+
+在已初始化的项目根目录执行；会覆盖现有 `.trellis/workflow.md`，建议先备份。
+
 Trellis 0.7+ 支持把模板保存成项目内变体，按任务/开发者切换：
 
 ```bash
