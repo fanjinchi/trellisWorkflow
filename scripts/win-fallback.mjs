@@ -140,7 +140,9 @@ function parseFlags(argv, valueFlags) {
     }
     if (sep >= 0) { val = key.slice(sep + 1); key = key.slice(0, sep); }
     key = norm(key);
-    if (val === true && valueFlags.has(key)) {
+    // PowerShell also accepts "-User: alice" (space after the colon); treat the empty
+    // value as "value follows" so the name is not silently dropped.
+    if ((val === true || val === "") && valueFlags.has(key)) {
       if (i + 1 >= argv.length) die("--" + key + " needs a value");
       val = argv[++i];
     }
@@ -375,7 +377,7 @@ function cmdInstall(argv) {
   if (!fs.existsSync(dstAgents)) { warn("Missing " + dstAgents); fail = true; }
   if (!fs.existsSync(binCmd)) { warn("Missing " + binCmd); fail = true; }
   if (!fs.existsSync(path.join(skillDir, "SKILL.md"))) { warn("Missing DSH skill"); fail = true; }
-  if (!fs.existsSync(path.join(scriptsDir, "trellis-workflow-matt.md"))) { warn("Missing local workflow cache"); fail = true; }
+  if (!hasCache(path.join(scriptsDir, "trellis-workflow-matt.md"))) { warn("Missing local workflow cache"); fail = true; }
   if (taskStore && fs.existsSync(taskStore)) {
     if (run(python.cmd, [...python.args, path.join(HERE, "patch-task-store.py"), "--check", taskStore], { capture: true }).status !== 0) {
       warn("Trellis template is not patched");

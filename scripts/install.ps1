@@ -164,7 +164,8 @@ if ($LASTEXITCODE -ne 0) { Write-Warn "Matt skills are incomplete"; $fail = $tru
 if (-not (Test-Path $dstAgents)) { Write-Warn "Missing $dstAgents"; $fail = $true }
 if (-not (Test-Path (Join-Path $BinDir "trellis-matt-init.cmd"))) { Write-Warn "Missing trellis-matt-init.cmd"; $fail = $true }
 if (-not (Test-Path (Join-Path $skillDir "SKILL.md"))) { Write-Warn "Missing DSH skill"; $fail = $true }
-if (-not (Test-Path (Join-Path $scriptsDir "trellis-workflow-matt.md"))) { Write-Warn "Missing local workflow cache"; $fail = $true }
+$wfCache = Join-Path $scriptsDir "trellis-workflow-matt.md"
+if (-not (Test-Path $wfCache) -or (Get-Item $wfCache).Length -eq 0) { Write-Warn "Missing local workflow cache"; $fail = $true }
 if (-not (Test-Path (Join-Path $scriptsDir "win-fallback.mjs"))) { Write-Warn "Missing Node fallback"; $fail = $true }
 if ($taskStore -and (Test-Path $taskStore)) {
     & $Python @PythonArgs (Join-Path $RepoDir "scripts\patch-task-store.py") --check $taskStore | Out-Null
