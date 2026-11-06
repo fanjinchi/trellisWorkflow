@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # 一键把当前项目初始化为「Matt × Trellis」workflow。
 #
-# 默认指向用户的 workflow 仓库：gh:fanjinchi/trellisWorkflow
-# 默认模板：matt
+# 默认优先使用 install.sh 缓存的 workflow（离线）；--refresh 或自定义 --source 才联网。
 #
 # 用法：
 #   trellis-matt-init                 # 用 git config user.name 作为开发者名
 #   trellis-matt-init --user alice    # 显式指定 .trellis/.developer 的名字
 #   trellis-matt-init --source gh:me/fork
 #   trellis-matt-init --force         # 已有项目时强制切换 workflow
+#   trellis-matt-init --refresh       # 忽略本地缓存，联网拉最新 workflow
 #
 # 做五件事：
 #   1. 新项目：trellis init --dsh + matt workflow；已有项目：切换 workflow
-#   2. 网络拿不到 marketplace 时，回退到 curl 直取 workflow.md
+#   2. 优先用本地缓存；没有缓存或 --refresh 时才走 marketplace / curl
 #   3. 给 .trellis/scripts/common/task_store.py 打父子 pointer 补丁
 #   4. 把 .dsh/skills/trellis-start 的 review 路由刷成 code-review
 #   5. 验证 workflow 可被 get_context.py 解析，并打印下一步
@@ -23,8 +23,13 @@ SOURCE="${TRELLIS_WORKFLOW_SOURCE:-gh:fanjinchi/trellisWorkflow}"
 TEMPLATE="${TRELLIS_WORKFLOW_TEMPLATE:-matt}"
 USER_NAME="${TRELLIS_USER:-}"
 USER_GIVEN=0
+SOURCE_GIVEN=0
 FORCE=0
+REFRESH=0
 MARKER="Single-source rule (every planning artifact"
+DSH_HOME_DIR="${DSH_HOME:-$HOME/.dsh}"
+LOCAL_WORKFLOW="${TRELLIS_WORKFLOW_CACHE:-$DSH_HOME_DIR/scripts/trellis-workflow-matt.md}"
+SOURCE_LABEL="$SOURCE"
 
 say() { printf '%s\n' "$*"; }
 warn() { printf '⚠  %s\n' "$*" >&2; }
@@ -36,11 +41,12 @@ usage() {
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -u|--user)   [ $# -ge 2 ] || die "--user 需要一个名字"; USER_NAME="$2"; USER_GIVEN=1; shift 2 ;;
-    -s|--source) [ $# -ge 2 ] || die "--source 需要 gh:owner/repo"; SOURCE="$2"; shift 2 ;;
+    -u|--user)    [ $# -ge 2 ] || die "--user 需要一个名字"; USER_NAME="$2"; USER_GIVEN=1; shift 2 ;;
+    -s|--source)  [ $# -ge 2 ] || die "--source 需要 gh:owner/repo"; SOURCE="$2"; SOURCE_GIVEN=1; shift 2 ;;
     -t|--template) [ $# -ge 2 ] || die "--template 需要一个模板 id"; TEMPLATE="$2"; shift 2 ;;
-    -f|--force)  FORCE=1; shift ;;
-    -h|--help)   usage; exit 0 ;;
+    -f|--force)   FORCE=1; shift ;;
+    -r|--refresh) REFRESH=1; shift ;;
+    -h|--help)    usage; exit 0 ;;
     *) die "未知参数：$1（用 --help 查看用法）" ;;
   esac
 done
@@ -121,6 +127,31 @@ if p.exists():
 PY
 }
 
+cache_workflow() {
+  [ "$SOURCE_GIVEN" -eq 0 ] || return 0
+  [ "$TEMPLATE" = "matt" ] || return 0
+  [ -s .trellis/workflow.md ] || return 0
+  mkdir -p "$(dirname "$LOCAL_WORKFLOW")" 2>/dev/null || return 0
+  cp .trellis/workflow.md "$LOCAL_WORKFLOW" 2>/dev/null || true
+}
+
+use_local_workflow() {
+  [ "$TEMPLATE" = "matt" ] || return 1
+  [ -s "$LOCAL_WORKFLOW" ] || return 1
+  cp "$LOCAL_WORKFLOW" "$tmpdir/workflow.md"
+  install_workflow_file
+  SOURCE_LABEL="本地缓存"
+  say "→ 使用本地缓存 workflow：$LOCAL_WORKFLOW"
+}
+
+offline_init() {
+  say "→ trellis init（离线，使用本地缓存）"
+  trellis init --dsh --yes --user "$USER_NAME" </dev/null
+  cp "$LOCAL_WORKFLOW" "$tmpdir/workflow.md"
+  install_workflow_file
+  SOURCE_LABEL="本地缓存"
+}
+
 verify_workflow() {
   [ -s .trellis/workflow.md ] || die "workflow.md 为空，初始化失败"
   if [ "$EXPECT_MATT" -eq 1 ] && [ "$TEMPLATE" = "matt" ] && ! grep -qF "$MARKER" .trellis/workflow.md; then
@@ -158,6 +189,11 @@ patch_task_store() {
 }
 
 init_project() {
+  if [ "$REFRESH" -eq 0 ] && [ "$SOURCE_GIVEN" -eq 0 ] && [ "$TEMPLATE" = "matt" ] && [ -s "$LOCAL_WORKFLOW" ]; then
+    offline_init
+    return 0
+  fi
+
   local i ok=""
   for i in 1 2 3; do
     say "→ trellis init（第 $i/3 次，marketplace：$SOURCE）"
@@ -172,26 +208,57 @@ init_project() {
     sleep 2
   done
 
-  if [ -z "$ok" ]; then
-    warn "marketplace 连续失败，改用离线结构 + 直取 workflow.md"
-    trellis init --dsh --yes --user "$USER_NAME" </dev/null
-    fetch_workflow_file || die "无法下载 workflow.md。可用 gh api 手动取：
-  gh api repos/${SOURCE#gh:}/contents/workflows/$TEMPLATE/workflow.md -H 'Accept: application/vnd.github.raw' > .trellis/workflow.md"
-    install_workflow_file
+  if [ -n "$ok" ]; then
+    cache_workflow
+    return 0
   fi
+
+  warn "marketplace 连续失败，改用离线结构 + 直取 workflow.md"
+  trellis init --dsh --yes --user "$USER_NAME" </dev/null
+  if fetch_workflow_file; then
+    install_workflow_file
+    cache_workflow
+    return 0
+  fi
+  if [ -s "$LOCAL_WORKFLOW" ]; then
+    warn "网络不可用，改用本地缓存"
+    cp "$LOCAL_WORKFLOW" "$tmpdir/workflow.md"
+    install_workflow_file
+    SOURCE_LABEL="本地缓存"
+    return 0
+  fi
+  die "无法下载 workflow.md，也没有本地缓存。可先在有网的机器上跑 install.sh，或手动把 workflows/matt/workflow.md 放到 .trellis/workflow.md。"
 }
 
 switch_workflow() {
-  say "→ 检测到已有 .trellis/，切换 workflow 到 $TEMPLATE"
+  if [ "$REFRESH" -eq 0 ] && [ "$SOURCE_GIVEN" -eq 0 ] && [ "$TEMPLATE" = "matt" ] && [ -s "$LOCAL_WORKFLOW" ]; then
+    use_local_workflow
+    return 0
+  fi
+
+  say "→ 切换 workflow 到 $TEMPLATE（marketplace：$SOURCE）"
   if trellis workflow --marketplace "$SOURCE" --template "$TEMPLATE" --force </dev/null; then
     if [ "$TEMPLATE" != "matt" ] || grep -qF "$MARKER" .trellis/workflow.md; then
+      cache_workflow
       return 0
     fi
     warn "切换返回成功但内容不是 Matt 版"
   fi
+
   warn "marketplace 切换失败，改用直取 workflow.md"
-  fetch_workflow_file || die "无法下载 workflow.md，也没有切换成功"
-  install_workflow_file
+  if fetch_workflow_file; then
+    install_workflow_file
+    cache_workflow
+    return 0
+  fi
+  if [ -s "$LOCAL_WORKFLOW" ]; then
+    warn "网络不可用，改用本地缓存"
+    cp "$LOCAL_WORKFLOW" "$tmpdir/workflow.md"
+    install_workflow_file
+    SOURCE_LABEL="本地缓存"
+    return 0
+  fi
+  die "无法下载 workflow.md，也没有本地缓存"
 }
 
 # 已有项目：身份首次初始化后不再变；--user 此时不生效，只提示。
@@ -207,7 +274,6 @@ fi
 
 say "项目：$PROJECT_ROOT"
 say "开发者：$USER_NAME（首次初始化时由 --user 决定 .trellis/.developer 与 workspace 目录名）"
-say "workflow：$TEMPLATE（来源 $SOURCE）"
 
 EXPECT_MATT=0
 if [ -f .trellis/workflow.md ] && [ "$FORCE" -eq 0 ]; then
@@ -230,7 +296,7 @@ verify_workflow
 
 say ""
 say "✅ 初始化完成"
-say "   .trellis/workflow.md  → $TEMPLATE"
+say "   .trellis/workflow.md  → $TEMPLATE（来源：$SOURCE_LABEL）"
 say "   .trellis/.developer   → $USER_NAME"
 say "   下一步：在这个目录启动 dsh；新会话会按全局规则先加载 trellis-start。"
 say "   提示：换团队/换机器时每人用自己的 --user，别共用同一个开发者目录。"

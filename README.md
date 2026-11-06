@@ -4,8 +4,8 @@
 
 把 Trellis 的 Plan / Execute / Finish 流程与 Matt 的 spec-driven 工程流串起来的一套可复用环境：`workflow.md` 模板 + 机器级安装脚本 + 项目级初始化宏。面向 **DeepSeek Harness (dsh)**。
 
-- 新电脑部署：交给 dsh 的 Agent 读 [AGENT-SETUP.md](./AGENT-SETUP.md)，或自己跑 `bash scripts/install.sh`
-- 单个项目接入：`trellis-matt-init --user <你的名字>`
+- 新电脑部署：交给 dsh 的 Agent 读 [AGENT-SETUP.md](./AGENT-SETUP.md)，或自己跑 `bash scripts/install.sh`（Windows：`scripts\install.ps1`）
+- 单个项目接入：`trellis-matt-init --user <你的名字>`（Windows：`trellis-matt-init.cmd -User <名字>`）
 - 工作流本体：`workflows/matt/workflow.md`
 
 ## 最快路径（新电脑）
@@ -15,13 +15,21 @@ git clone https://github.com/fanjinchi/trellisWorkflow ~/code/trellisWorkflow
 bash ~/code/trellisWorkflow/scripts/install.sh
 ```
 
+Windows（PowerShell）：
+
+```powershell
+git clone https://github.com/fanjinchi/trellisWorkflow $HOME\code\trellisWorkflow
+cd $HOME\code\trellisWorkflow
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install.ps1
+```
+
 然后在任意项目根目录：
 
 ```bash
 trellis-matt-init --user <你的名字>
 ```
 
-就这两条。之后在该项目里启动 dsh，说「用 trellis-start 开始」。
+Windows 用 `trellis-matt-init.cmd -User <名字>`。就这两条。之后在该项目里启动 dsh，说「用 trellis-start 开始」。
 
 > 更省事：把下面这句话交给新电脑上的 dsh ——
 > 「克隆 https://github.com/fanjinchi/trellisWorkflow ，读 AGENT-SETUP.md，按里面的步骤把环境装好并向用户汇报。」
@@ -31,9 +39,12 @@ trellis-matt-init --user <你的名字>
 - `AGENT-SETUP.md` — 给 Agent 的部署指引（步骤、验证、故障排查）
 - `dsh/AGENTS.md` — 全局规则，安装到 `~/.dsh/AGENTS.md`
 - `dsh/skills/trellis-matt-init/SKILL.md` — dsh 技能，用户说「初始化这个项目」时触发
-- `scripts/install.sh` — 机器级安装（Trellis、Matt skills、dsh 副本、全局规则、宏、模板补丁）
-- `scripts/trellis-matt-init.sh` — 项目级一键初始化宏
-- `scripts/sync-matt-skills.sh` — 下载/更新 Matt skills 并生成 dsh 模型可见副本
+- `scripts/install.sh` — Linux/macOS 机器级安装（Trellis、Matt skills、dsh 副本、全局规则、宏、模板补丁、workflow 缓存）
+- `scripts/trellis-matt-init.sh` — Linux/macOS 项目级一键初始化宏
+- `scripts/sync-matt-skills.sh` — Linux/macOS 下载/更新 Matt skills 并生成 dsh 模型可见副本
+- `scripts/install.ps1` / `scripts/install.cmd` — Windows 机器级安装
+- `scripts/trellis-matt-init.ps1` / `scripts/trellis-matt-init.cmd` — Windows 项目级初始化宏
+- `scripts/sync-matt-skills.ps1` — Windows 版 Matt skills 同步
 - `scripts/patch-task-store.py` — 给 Trellis 的 `task_store.py` 打父子 pointer 补丁
 - `index.json` — Trellis marketplace 索引，声明一个 `type: "workflow"` 模板
 - `workflows/matt/workflow.md` — 完整工作流（已在 Trellis 0.6.17 项目里通过解析器验证）
@@ -62,15 +73,27 @@ Trellis 把 dsh 定义为 **class-2 pull 型平台**：只写 `.dsh/skills/`、`
 3. **Node.js ≥ 20**、`git`、`curl`、`python3`
 4. 能访问 GitHub / npm（raw.githubusercontent 慢也能用，宏会回退）
 
-### `install.sh` 具体做了什么
+### `install.sh` / `install.ps1` 具体做了什么
 
 1. 安装/校验 `@mindfoldhq/trellis@0.6.17`
 2. `git clone` Matt skills → `~/.agents/skills`（只装 workflow 用到的 23 个）
 3. 复制其中 12 个带 `disable-model-invocation: true` 的技能到 `~/.dsh/skills` 并去掉该行（DSH 会隐藏带这行的技能）
 4. 安装 `~/.dsh/AGENTS.md`（已有文件先备份为 `AGENTS.md.bak.<时间>`）
-5. 安装 `~/.dsh/scripts/` 与 `~/.local/bin/trellis-matt-init`
+5. 安装 `~/.dsh/scripts/` 与 `~/.local/bin/trellis-matt-init`（Windows：`%USERPROFILE%\.local\bin\trellis-matt-init.cmd`）
 6. 安装 dsh 技能 `~/.dsh/skills/trellis-matt-init`
 7. 给 npm 包内的 `task_store.py` 模板打父子 pointer 补丁
+8. 把 `workflows/matt/workflow.md` 缓存到 `~/.dsh/scripts/trellis-workflow-matt.md`，之后初始化项目默认离线使用
+
+Windows 的 `install.ps1` 做同样的事，只是路径和命令换成 PowerShell 版本。
+
+### 宏是什么、怎么触发
+
+DSH 没有用户自定义斜杠命令的目录，所以「宏」不是 `/trellis-matt-init`，而是两个入口：
+
+- **终端命令**：`trellis-matt-init --user <名字>`（Windows：`trellis-matt-init.cmd -User <名字>`）
+- **dsh 技能**：在项目里对 dsh 说「初始化这个项目」「用我的 workflow 初始化」
+
+两者跑同一套逻辑。
 
 ### 宏的默认值与回退
 
@@ -84,7 +107,9 @@ trellis init --dsh --yes --user alice \
 - `--user`：开发者身份，写入 `.trellis/.developer` 并决定 `.trellis/workspace/<名字>/`。**建议显式设置**；不传时退回 `git config user.name`。只在首次初始化生效，已有 `.trellis/.developer` 的项目不会被覆盖。
 - `--source gh:owner/repo`：换 fork。
 - `--force`：已有 `.trellis/` 时强制切换 workflow。
-- 网络失败：宏重试 3 次 → 退回 `trellis init` 原生结构 + `curl` 直取 `workflow.md` + 从 `.template-hashes.json` 移除该文件（防止 `trellis update` 覆盖）。
+- `--refresh`：忽略本地缓存，联网拉最新 workflow（Windows：`-Refresh`）。
+- **默认离线**：优先用 `~/.dsh/scripts/trellis-workflow-matt.md` 缓存，不连 GitHub；没有缓存或加 `--refresh` 才走 marketplace / curl。
+- 网络失败：宏重试 3 次 → 退回 `trellis init` 原生结构 + `curl` 直取 `workflow.md` + 从 `.template-hashes.json` 移除该文件（防止 `trellis update` 覆盖）→ 再失败就退回本地缓存。
 - 宏还会顺手把 `.dsh/skills/trellis-start` 快捷表里的 review 路由从上游遗留的 `trellis-check` 刷成 `code-review`，与 workflow 保持一致。
 
 ### 手动初始化（不用宏）
@@ -108,6 +133,7 @@ trellis workflow --marketplace gh:fanjinchi/trellisWorkflow --template matt --fo
 # 机器级
 trellis --version
 bash ~/.dsh/scripts/sync-matt-skills.sh --check
+test -s ~/.dsh/scripts/trellis-workflow-matt.md && echo CACHE_OK
 
 # 项目级（在项目根目录）
 grep -c "Single-source rule (every planning artifact" .trellis/workflow.md   # 1
@@ -120,8 +146,8 @@ workflow 必须保留这些解析标记：`## Phase Index`、`#### X.Y` 步骤�
 
 ## 更新与固定版本
 
-- **改 workflow 模板**：编辑 `workflows/matt/workflow.md`，提交后重跑项目的 `trellis workflow --marketplace ... --force` 或 `trellis-matt-init --force`。
-- **更新 Matt skills**：`bash ~/.dsh/scripts/sync-matt-skills.sh`。
+- **改 workflow 模板**：编辑 `workflows/matt/workflow.md`，提交后重跑 `install.sh` / `install.ps1` 刷新本地缓存；项目里用 `trellis-matt-init --force`（Windows：`-Force`）或 `--refresh` 切换。
+- **更新 Matt skills**：`bash ~/.dsh/scripts/sync-matt-skills.sh`（Windows：`powershell -File %USERPROFILE%\.dsh\scripts\sync-matt-skills.ps1`）。
 - **固定版本**：`gh:fanjinchi/trellisWorkflow#v1`（分支或 tag 均可）。
 - Trellis 升级后：重跑 `install.sh` 重新打模板补丁；若 `trellis update` 覆盖了项目里的 `task_store.py`，重跑 `patch-task-store.py`。
 

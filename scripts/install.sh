@@ -6,7 +6,7 @@
 #   2. 下载 Matt skills → ~/.agents/skills
 #   3. 给 DSH 生成模型可见副本 → ~/.dsh/skills（去掉 disable-model-invocation）
 #   4. 安装全局规则 → ~/.dsh/AGENTS.md（已有文件会先备份）
-#   5. 安装初始化宏 → ~/.dsh/scripts/ 与 ~/.local/bin/trellis-matt-init
+#   5. 安装初始化宏与本地 workflow 缓存 → ~/.dsh/scripts/ 与 ~/.local/bin/trellis-matt-init
 #   6. 安装 dsh 技能 → ~/.dsh/skills/trellis-matt-init
 #   7. 给 Trellis 的 task_store.py 模板打父子 pointer 补丁
 #
@@ -76,6 +76,7 @@ mkdir -p "$DSH_HOME/scripts"
 cp "$REPO_DIR/scripts/trellis-matt-init.sh" "$DSH_HOME/scripts/"
 cp "$REPO_DIR/scripts/sync-matt-skills.sh" "$DSH_HOME/scripts/"
 cp "$REPO_DIR/scripts/patch-task-store.py" "$DSH_HOME/scripts/"
+cp "$REPO_DIR/workflows/matt/workflow.md" "$DSH_HOME/scripts/trellis-workflow-matt.md"
 chmod +x "$DSH_HOME/scripts/trellis-matt-init.sh" "$DSH_HOME/scripts/sync-matt-skills.sh" "$DSH_HOME/scripts/patch-task-store.py"
 mkdir -p "$BIN_DIR"
 ln -sf "$DSH_HOME/scripts/trellis-matt-init.sh" "$BIN_DIR/trellis-matt-init"
@@ -113,6 +114,7 @@ bash "$REPO_DIR/scripts/sync-matt-skills.sh" --check >/dev/null 2>&1 || { warn "
 [ -f "$DSH_HOME/AGENTS.md" ] || { warn "缺少 $DSH_HOME/AGENTS.md"; fail=1; }
 [ -x "$BIN_DIR/trellis-matt-init" ] || { warn "缺少 $BIN_DIR/trellis-matt-init"; fail=1; }
 [ -f "$DSH_HOME/skills/trellis-matt-init/SKILL.md" ] || { warn "缺少 dsh 技能 trellis-matt-init"; fail=1; }
+[ -s "$DSH_HOME/scripts/trellis-workflow-matt.md" ] || { warn "缺少本地 workflow 缓存"; fail=1; }
 if [ -f "$task_store" ]; then
   python3 "$REPO_DIR/scripts/patch-task-store.py" --check "$task_store" >/dev/null 2>&1 || { warn "trellis 模板未打补丁"; fail=1; }
 fi
