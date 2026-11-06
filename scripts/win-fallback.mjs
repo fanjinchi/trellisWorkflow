@@ -43,8 +43,18 @@ const DSH_VISIBLE = [
 
 function binCmdText(binDir, scriptsDir) {
   // %~dp0 keeps the batch file free of non-ASCII absolute paths (e.g. Chinese user names).
+  // Different drives cannot be reached through %~dp0; fall back to %USERPROFILE% when
+  // scriptsDir lives under the home directory, otherwise the absolute path is the only option.
   const rel = path.relative(binDir, scriptsDir);
-  const dir = path.isAbsolute(rel) ? rel : rel ? "%~dp0" + rel : "%~dp0.";
+  let dir;
+  if (!path.isAbsolute(rel)) {
+    dir = rel ? "%~dp0" + rel : "%~dp0.";
+  } else {
+    const relHome = path.relative(os.homedir(), scriptsDir);
+    dir = path.isAbsolute(relHome)
+      ? rel
+      : "%USERPROFILE%" + (relHome ? path.sep + relHome : "");
+  }
   const ps1 = dir + path.sep + "trellis-matt-init.ps1";
   const mjs = dir + path.sep + "win-fallback.mjs";
   return [
