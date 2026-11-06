@@ -1,6 +1,6 @@
 # Trellis Matt Workflow 模板
 
-在Linux do论坛大佬的启发下配置的个人工作流，抄了大佬的部分设置https://linux.do/t/topic/2635801原贴在这里。workflow是让大肥鱼帮忙改的，把部分Matt Skill本来只能手动触发的改成了模型可发现以便适配工作流。本人是个软件白痴因此在使用中发现问题和修改的会比较慢，之后再发现有什么痛点再改了。workflow其实改了pi，kimicode，dsh三个的部分，但是给兄弟用的所以只让ai总结了一个dsh的部署方案。不过如果你想用的话其他agent的思路应该不会有多大区别，ai应该能分析的明白的。打包的包含了我个人在用的全局规则如果你只想用workflow那就只改下Matt Skill然后初始化的时候--workflow matt --workflow-source gh:fanjinchi/trellisWorkflow带上这个参数应该就好了
+在Linux do论坛大佬的启发下配置的个人工作流，抄了大佬的部分设置https://linux.do/t/topic/2635801原贴在这里。AGENTS.md作为规则也用了部分来着https://github.com/aicodeking/deepseek-stack项目技能以及https://github.com/Sisyphbaous-DT-Project这位大佬的提示词。workflow是让大肥鱼帮忙改的，把部分Matt Skill本来只能手动触发的改成了模型可发现以便适配工作流。本人是个软件白痴因此在使用中发现问题和修改的会比较慢，之后再发现有什么痛点再改了。workflow其实改了pi，kimicode，dsh三个的部分，但是给兄弟用的所以只让ai总结了一个dsh的部署方案。不过如果你想用的话其他agent的思路应该不会有多大区别，ai应该能分析的明白的。打包的包含了我个人在用的全局规则如果你只想用workflow那就只改下Matt Skill然后初始化的时候--workflow matt --workflow-source gh:fanjinchi/trellisWorkflow带上这个参数应该就好了
 
 把 Trellis 的 Plan / Execute / Finish 流程与 Matt 的 spec-driven 工程流串起来的一套可复用环境：`workflow.md` 模板 + 机器级安装脚本 + 项目级初始化宏。面向 **DeepSeek Harness (dsh)**。
 
