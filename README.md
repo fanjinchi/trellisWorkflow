@@ -23,6 +23,8 @@ cd $HOME\code\trellisWorkflow
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install.ps1
 ```
 
+如果 PowerShell 被安全策略挡住（`running scripts is disabled`、AppLocker、Constrained Language Mode），改用 `scripts\install.cmd`：它先试 PowerShell，失败就自动用 Node 跑同一套步骤（`scripts/win-fallback.mjs`；Node 是 Trellis 的依赖，一定在）。想强制走 Node：`set TRELLIS_NO_POWERSHELL=1` 后再运行 `.cmd`。
+
 然后在任意项目根目录：
 
 ```bash
@@ -45,6 +47,7 @@ Windows 用 `trellis-matt-init.cmd -User <名字>`。就这两条。之后在该
 - `scripts/install.ps1` / `scripts/install.cmd` — Windows 机器级安装
 - `scripts/trellis-matt-init.ps1` / `scripts/trellis-matt-init.cmd` — Windows 项目级初始化宏
 - `scripts/sync-matt-skills.ps1` — Windows 版 Matt skills 同步
+- `scripts/win-fallback.mjs` — 无 PowerShell 的 Node 实现（`.cmd` 的自动回退；也可在 Linux/macOS 直接 `node` 运行）
 - `scripts/patch-task-store.py` — 给 Trellis 的 `task_store.py` 打父子 pointer 补丁
 - `index.json` — Trellis marketplace 索引，声明一个 `type: "workflow"` 模板
 - `workflows/matt/workflow.md` — 完整工作流（已在 Trellis 0.6.17 项目里通过解析器验证）
@@ -147,7 +150,7 @@ workflow 必须保留这些解析标记：`## Phase Index`、`#### X.Y` 步骤�
 ## 更新与固定版本
 
 - **改 workflow 模板**：编辑 `workflows/matt/workflow.md`，提交后重跑 `install.sh` / `install.ps1` 刷新本地缓存；项目里用 `trellis-matt-init --force`（Windows：`-Force`）或 `--refresh` 切换。
-- **更新 Matt skills**：`bash ~/.dsh/scripts/sync-matt-skills.sh`（Windows：`powershell -File %USERPROFILE%\.dsh\scripts\sync-matt-skills.ps1`）。
+- **更新 Matt skills**：`bash ~/.dsh/scripts/sync-matt-skills.sh`（Windows：`powershell -File %USERPROFILE%\.dsh\scripts\sync-matt-skills.ps1`；PowerShell 不可用时 `node %USERPROFILE%\.dsh\scripts\win-fallback.mjs sync`）。
 - **固定版本**：`gh:fanjinchi/trellisWorkflow#v1`（分支或 tag 均可）。
 - Trellis 升级后：重跑 `install.sh` 重新打模板补丁；若 `trellis update` 覆盖了项目里的 `task_store.py`，重跑 `patch-task-store.py`。
 

@@ -23,7 +23,7 @@ DSH 没有用户自定义斜杠命令的目录（命令只能由插件注册）�
 | 项目 | 要求 |
 | --- | --- |
 | 系统 | Linux / macOS / Windows 10+ |
-| Shell | Linux/macOS：`bash`；Windows：PowerShell 5.1+（系统自带） |
+| Shell | Linux/macOS：`bash`；Windows：PowerShell 5.1+（系统自带）。PowerShell 被策略禁用时，`.cmd` 会自动改用 Node 跑同一套步骤 |
 | Node.js | ≥ 20，`npm` 可全局安装（不要用 sudo 装整个脚本；npm 全局目录要当前用户可写） |
 | 其它命令 | `git`、`curl`（Windows 用 PowerShell 自带网络请求，不强制 curl）、`python3` / `python` |
 | 网络 | 能访问 github.com、raw.githubusercontent.com、registry.npmjs.org |
@@ -52,6 +52,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install.ps1
 ```
 
 也可以直接双击 `scripts\install.cmd`。
+
+**PowerShell 被安全策略挡住时**（`running scripts is disabled`、AppLocker、Constrained Language Mode），`.cmd` 会先试 PowerShell，失败后自动改用 Node 跑同一套步骤（`scripts\win-fallback.mjs`；Node 是 Trellis 的依赖，一定在）。想强制走 Node：
+
+```bat
+set TRELLIS_NO_POWERSHELL=1
+scripts\install.cmd
+```
 
 它会做 7 件事（幂等，可重复跑）：
 
@@ -275,6 +282,8 @@ python3 .trellis/scripts/get_context.py --mode phase | head -3   # 期望：## P
 
 > 在 PowerShell 里执行。路径都用 `$HOME`（即 `%USERPROFILE%`）。
 > 以下命令默认在**仓库根目录**执行；7.7 会 `cd` 到项目根目录。
+>
+> **如果 PowerShell 本身被禁用**（连 `powershell -File` 都起不来），不要照抄下面的 PowerShell 命令，改用 Node 版：`node scripts\win-fallback.mjs install`（等价于 7.1–7.6）；项目里用 `node %USERPROFILE%\.dsh\scripts\win-fallback.mjs init -User <名字>`（等价于 7.7）。
 
 ### 7.1 安装 Trellis
 
@@ -343,11 +352,27 @@ Select-String -Path $dst -Pattern "DSH × Trellis 入口" -Quiet   # 期望：Tr
 $scripts = Join-Path $HOME ".dsh\scripts"
 $bin = Join-Path $HOME ".local\bin"
 New-Item -ItemType Directory -Force -Path $scripts, $bin, (Join-Path $HOME ".dsh\skills\trellis-matt-init") | Out-Null
-Copy-Item -Force "scripts\trellis-matt-init.ps1", "scripts\sync-matt-skills.ps1", "scripts\patch-task-store.py" $scripts
+Copy-Item -Force "scripts\trellis-matt-init.ps1", "scripts\sync-matt-skills.ps1", "scripts\patch-task-store.py", "scripts\win-fallback.mjs" $scripts
 Copy-Item -Force "workflows\matt\workflow.md" (Join-Path $scripts "trellis-workflow-matt.md")
 Copy-Item -Force "dsh\skills\trellis-matt-init\SKILL.md" (Join-Path $HOME ".dsh\skills\trellis-matt-init")
-$cmd = "@echo off`r`npowershell -NoProfile -ExecutionPolicy Bypass -File `"$scripts\trellis-matt-init.ps1`" %*`r`n"
-[IO.File]::WriteAllText((Join-Path $bin "trellis-matt-init.cmd"), $cmd, [System.Text.Encoding]::Default)
+$cmd = @"
+@echo off
+setlocal EnableExtensions
+if /i "%TRELLIS_NO_POWERSHELL%"=="1" goto :node
+where powershell >nul 2>nul
+if errorlevel 1 goto :node
+powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.dsh\scripts\trellis-matt-init.ps1" %*
+if not errorlevel 1 exit /b 0
+:node
+where node >nul 2>nul
+if errorlevel 1 (
+  echo ERROR: PowerShell is unavailable and Node was not found.
+  exit /b 1
+)
+node "%USERPROFILE%\.dsh\scripts\win-fallback.mjs" init %*
+exit /b %ERRORLEVEL%
+"@
+[IO.File]::WriteAllText((Join-Path $bin "trellis-matt-init.cmd"), ($cmd -replace "`r?`n", "`r`n"), [System.Text.Encoding]::Default)
 Test-Path (Join-Path $bin "trellis-matt-init.cmd")   # 期望：True
 ```
 
@@ -421,7 +446,8 @@ Trellis 0.6.17 上游的 `task.py create --parent` 不会给 child 的 `prd.md` 
 | 已有 `~/.dsh/AGENTS.md` 被覆盖 | 用脚本打印的 `AGENTS.md.bak.<时间>` 恢复；确认要合并再手工编辑 |
 | 初始化后 dsh 不加载 `trellis-start` | 确认 `~/.dsh/AGENTS.md` 含「DSH × Trellis 入口」一节；确认项目根有 `.trellis/` |
 | 模型看不到某个 Matt 技能 | 看它是否在 `~/.dsh/skills` 且 SKILL.md 里没有 `disable-model-invocation: true`；重跑 `sync-matt-skills` |
-| Windows 提示 `running scripts is disabled` | 用 `powershell -NoProfile -ExecutionPolicy Bypass -File ...`，或双击 `install.cmd` |
+| Windows 提示 `running scripts is disabled` | 用 `powershell -NoProfile -ExecutionPolicy Bypass -File ...`，或双击 `install.cmd`（它会自动回退到 Node） |
+| PowerShell 完全被禁用（AppLocker / Constrained Language Mode） | 用 `.cmd`（自动回退 Node）；或在**仓库根目录**跑 `node scripts\win-fallback.mjs install`。项目里用已安装副本 `node %USERPROFILE%\.dsh\scripts\win-fallback.mjs init -User <名字>`（已安装副本只能 init/sync，不能 install） |
 | Windows 找不到 `trellis-matt-init.cmd` | 把 `%USERPROFILE%\.local\bin` 加进 PATH，或用完整路径 |
 | 初始化后 workflow 不是 matt | 加 `--force` / `-Force` 重跑；仍不对就检查 `--source` / `-Source` |
 

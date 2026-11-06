@@ -92,9 +92,43 @@ New-Item -ItemType Directory -Force -Path $scriptsDir | Out-Null
 Copy-Item -Force (Join-Path $RepoDir "scripts\trellis-matt-init.ps1") $scriptsDir
 Copy-Item -Force (Join-Path $RepoDir "scripts\sync-matt-skills.ps1") $scriptsDir
 Copy-Item -Force (Join-Path $RepoDir "scripts\patch-task-store.py") $scriptsDir
+Copy-Item -Force (Join-Path $RepoDir "scripts\win-fallback.mjs") $scriptsDir
 Copy-Item -Force (Join-Path $RepoDir "workflows\matt\workflow.md") (Join-Path $scriptsDir "trellis-workflow-matt.md")
 New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
-$cmdText = "@echo off`r`npowershell -NoProfile -ExecutionPolicy Bypass -File `"$scriptsDir\trellis-matt-init.ps1`" %*`r`n"
+if ($DshHome.TrimEnd('\') -eq (Join-Path $HOME ".dsh").TrimEnd('\')) {
+    # %USERPROFILE% keeps the generated .cmd pure ASCII (Chinese user names).
+    $ps1Path = "%USERPROFILE%\.dsh\scripts\trellis-matt-init.ps1"
+    $mjsPath = "%USERPROFILE%\.dsh\scripts\win-fallback.mjs"
+} else {
+    $ps1Path = Join-Path $scriptsDir "trellis-matt-init.ps1"
+    $mjsPath = Join-Path $scriptsDir "win-fallback.mjs"
+}
+$cmdLines = @(
+    "@echo off",
+    "setlocal EnableExtensions",
+    "rem Try PowerShell first; fall back to Node when PowerShell is blocked",
+    "rem (ExecutionPolicy, AppLocker, Constrained Language Mode).",
+    "rem Force the Node path with:  set TRELLIS_NO_POWERSHELL=1",
+    'if /i "%TRELLIS_NO_POWERSHELL%"=="1" goto :node',
+    "where powershell >nul 2>nul",
+    "if errorlevel 1 goto :nops",
+    "powershell -NoProfile -ExecutionPolicy Bypass -File `"$ps1Path`" %*",
+    "if not errorlevel 1 exit /b 0",
+    "echo.",
+    "echo [!] PowerShell failed; falling back to Node.",
+    "goto :node",
+    ":nops",
+    "echo [!] PowerShell not found; using Node.",
+    ":node",
+    "where node >nul 2>nul",
+    "if errorlevel 1 (",
+    "  echo ERROR: PowerShell is unavailable and Node was not found.",
+    "  exit /b 1",
+    ")",
+    "node `"$mjsPath`" init %*",
+    "exit /b %ERRORLEVEL%"
+)
+$cmdText = ($cmdLines -join "`r`n") + "`r`n"
 $ansi = [System.Text.Encoding]::GetEncoding([System.Globalization.CultureInfo]::CurrentCulture.TextInfo.ANSICodePage)
 [IO.File]::WriteAllText((Join-Path $BinDir "trellis-matt-init.cmd"), $cmdText, $ansi)
 Write-Say "OK: $scriptsDir"
@@ -131,6 +165,7 @@ if (-not (Test-Path $dstAgents)) { Write-Warn "Missing $dstAgents"; $fail = $tru
 if (-not (Test-Path (Join-Path $BinDir "trellis-matt-init.cmd"))) { Write-Warn "Missing trellis-matt-init.cmd"; $fail = $true }
 if (-not (Test-Path (Join-Path $skillDir "SKILL.md"))) { Write-Warn "Missing DSH skill"; $fail = $true }
 if (-not (Test-Path (Join-Path $scriptsDir "trellis-workflow-matt.md"))) { Write-Warn "Missing local workflow cache"; $fail = $true }
+if (-not (Test-Path (Join-Path $scriptsDir "win-fallback.mjs"))) { Write-Warn "Missing Node fallback"; $fail = $true }
 if ($taskStore -and (Test-Path $taskStore)) {
     & $Python @PythonArgs (Join-Path $RepoDir "scripts\patch-task-store.py") --check $taskStore | Out-Null
     if ($LASTEXITCODE -ne 0) { Write-Warn "Trellis template is not patched"; $fail = $true }

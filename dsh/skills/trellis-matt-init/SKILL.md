@@ -27,6 +27,12 @@ description: 一键把当前项目初始化为 Matt × Trellis workflow（trelli
    powershell -NoProfile -ExecutionPolicy Bypass -File "$HOME\.dsh\scripts\trellis-matt-init.ps1" -User "<名字>"
    ```
 
+   PowerShell 被安全策略禁用时，改用 Node 版（同一套逻辑）：
+
+   ```bat
+   node "%USERPROFILE%\.dsh\scripts\win-fallback.mjs" init -User "<名字>"
+   ```
+
    已有 `.trellis/` 且用户确认要换成 matt 时加 `--force`（Windows：`-Force`）。默认来源是 `gh:fanjinchi/trellisWorkflow`，需要换 fork 时加 `--source gh:owner/repo`（Windows：`-Source`）。默认用本地缓存、不联网；要拉最新加 `--refresh`（Windows：`-Refresh`）。
 5. 按输出逐项验证：
    - `.trellis/workflow.md` 含 `Single-source rule (every planning artifact`

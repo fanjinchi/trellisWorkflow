@@ -38,7 +38,7 @@ function Write-Die { param([string]$Message) Write-Host "ERROR: $Message" -Foreg
 
 function Test-MattWorkflow {
     if (-not (Test-Path ".trellis\workflow.md")) { return $false }
-    return [bool](Test-MattWorkflow)
+    return [bool](Select-String -Path ".trellis\workflow.md" -SimpleMatch -Pattern $Marker -Quiet)
 }
 
 $Python = $null
