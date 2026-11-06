@@ -396,7 +396,7 @@ if (Test-Path $hp) {
   if ($data.hashes) { $data.hashes.PSObject.Properties.Remove(".trellis/workflow.md") }
   [IO.File]::WriteAllText((Resolve-Path $hp).Path, ($data | ConvertTo-Json -Depth 20), (New-Object System.Text.UTF8Encoding($false)))
 }
-python scripts\patch-task-store.py ".trellis\scripts\common\task_store.py"
+python $HOME\.dsh\scripts\patch-task-store.py ".trellis\scripts\common\task_store.py"
 $start = ".dsh\skills\trellis-start\SKILL.md"
 if (Test-Path $start) {
   $s = [IO.File]::ReadAllText($start)
@@ -447,7 +447,7 @@ Trellis 0.6.17 上游的 `task.py create --parent` 不会给 child 的 `prd.md` 
 | 初始化后 dsh 不加载 `trellis-start` | 确认 `~/.dsh/AGENTS.md` 含「DSH × Trellis 入口」一节；确认项目根有 `.trellis/` |
 | 模型看不到某个 Matt 技能 | 看它是否在 `~/.dsh/skills` 且 SKILL.md 里没有 `disable-model-invocation: true`；重跑 `sync-matt-skills` |
 | Windows 提示 `running scripts is disabled` | 用 `powershell -NoProfile -ExecutionPolicy Bypass -File ...`，或双击 `install.cmd`（它会自动回退到 Node） |
-| PowerShell 完全被禁用（AppLocker / Constrained Language Mode） | 用 `.cmd`（自动回退 Node）；或在**仓库根目录**跑 `node scripts\win-fallback.mjs install`。项目里用已安装副本 `node %USERPROFILE%\.dsh\scripts\win-fallback.mjs init -User <名字>`（已安装副本只能 init/sync，不能 install） |
+| PowerShell 完全被禁用（AppLocker / Constrained Language Mode） | 用 `.cmd`（自动回退 Node）；或在**仓库根目录**跑 `node scripts\win-fallback.mjs install`。项目里用已安装副本 `node "$env:USERPROFILE\.dsh\scripts\win-fallback.mjs" init -User <名字>`（已安装副本只能 init/sync，不能 install） |
 | Windows 找不到 `trellis-matt-init.cmd` | 把 `%USERPROFILE%\.local\bin` 加进 PATH，或用完整路径 |
 | 初始化后 workflow 不是 matt | 加 `--force` / `-Force` 重跑；仍不对就检查 `--source` / `-Source` |
 

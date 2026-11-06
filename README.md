@@ -150,7 +150,7 @@ workflow 必须保留这些解析标记：`## Phase Index`、`#### X.Y` 步骤�
 ## 更新与固定版本
 
 - **改 workflow 模板**：编辑 `workflows/matt/workflow.md`，提交后重跑 `install.sh` / `install.ps1` 刷新本地缓存；项目里用 `trellis-matt-init --force`（Windows：`-Force`）或 `--refresh` 切换。
-- **更新 Matt skills**：`bash ~/.dsh/scripts/sync-matt-skills.sh`（Windows：`powershell -File %USERPROFILE%\.dsh\scripts\sync-matt-skills.ps1`；PowerShell 不可用时 `node %USERPROFILE%\.dsh\scripts\win-fallback.mjs sync`）。
+- **更新 Matt skills**：`bash ~/.dsh/scripts/sync-matt-skills.sh`（Windows PowerShell：`powershell -File "$env:USERPROFILE\.dsh\scripts\sync-matt-skills.ps1"`；PowerShell 不可用时在 cmd 里 `node "%USERPROFILE%\.dsh\scripts\win-fallback.mjs" sync`）。
 - **固定版本**：`gh:fanjinchi/trellisWorkflow#v1`（分支或 tag 均可）。
 - Trellis 升级后：重跑 `install.sh` 重新打模板补丁；若 `trellis update` 覆盖了项目里的 `task_store.py`，重跑 `patch-task-store.py`。
 

@@ -10,7 +10,7 @@ description: 一键把当前项目初始化为 Matt × Trellis workflow（trelli
 ## 步骤
 
 1. 确认在项目根目录（有 `.git` 或 `package.json` 等）。不是 git 仓库时提醒用户 workflow 的 Phase 3.4 需要 commit，但**不要擅自 `git init`**。
-2. 检查工具：`command -v trellis`、`test -x ~/.dsh/scripts/trellis-matt-init.sh`。缺任何一个就告诉用户先运行 workflow 仓库里的 `scripts/install.sh`，不要手搓替代步骤。
+2. 检查工具：`command -v trellis`，以及初始化宏（Linux/macOS：`test -x ~/.dsh/scripts/trellis-matt-init.sh`；Windows：`Test-Path "$HOME\.dsh\scripts\trellis-matt-init.ps1"`，PowerShell 不可用时看 `win-fallback.mjs`）。缺任何一个就告诉用户先运行 workflow 仓库里的 `scripts/install.sh`（Windows：`install.cmd`），不要手搓替代步骤。
 3. 确定开发者名：
    - 用户本轮给过名字就用；
    - 否则用 `git config user.name`；
