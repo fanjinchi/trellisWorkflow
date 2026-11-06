@@ -24,7 +24,7 @@ trellis-matt-init --user <你的名字>
 就这两条。之后在该项目里启动 dsh，说「用 trellis-start 开始」。
 
 > 更省事：把下面这句话交给新电脑上的 dsh ——
-> 「克隆 https://github.com/fanjinchi/trellisWorkflow，读 AGENT-SETUP.md，按里面的步骤把环境装好并向用户汇报。」
+> 「克隆 https://github.com/fanjinchi/trellisWorkflow ，读 AGENT-SETUP.md，按里面的步骤把环境装好并向用户汇报。」
 
 ## 目录
 
