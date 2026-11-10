@@ -19,6 +19,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 通过 ~/.local/bin/trellis-matt-init 符号链接调用时，dirname 得到的是 bin 目录，
+# 辅助脚本其实在 ~/.dsh/scripts（install.sh 的安装位置），这里回退过去。
+[ -f "$SCRIPT_DIR/trellis-matt-init.sh" ] || SCRIPT_DIR="${DSH_HOME:-$HOME/.dsh}/scripts"
 SOURCE="${TRELLIS_WORKFLOW_SOURCE:-gh:fanjinchi/trellisWorkflow}"
 TEMPLATE="${TRELLIS_WORKFLOW_TEMPLATE:-matt}"
 USER_NAME="${TRELLIS_USER:-}"
