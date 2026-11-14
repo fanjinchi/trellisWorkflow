@@ -134,9 +134,10 @@ function parseFlags(argv, valueFlags) {
     let val = true;
     let sep = key.indexOf("=");
     if (sep < 0) {
-      // PowerShell also accepts -User:alice; only split when the prefix is a known flag.
+      // PowerShell also accepts -User:alice and -Force:$true; split when the prefix is a
+      // known value flag, or when the tail is a boolean literal.
       const colon = key.indexOf(":");
-      if (colon > 0 && valueFlags.has(norm(key.slice(0, colon)))) sep = colon;
+      if (colon > 0 && (valueFlags.has(norm(key.slice(0, colon))) || /^\$?(true|false|1|0|yes|no|on|off)$/i.test(key.slice(colon + 1).trim()))) sep = colon;
     }
     if (sep >= 0) { val = key.slice(sep + 1); key = key.slice(0, sep); }
     key = norm(key);
@@ -144,11 +145,26 @@ function parseFlags(argv, valueFlags) {
     // value as "value follows" so the name is not silently dropped.
     if ((val === true || val === "") && valueFlags.has(key)) {
       if (i + 1 >= argv.length) die("--" + key + " needs a value");
+      // Do not swallow the next flag as the value (e.g. "-User -Force" used to set the
+      // developer name to "-Force").
+      // A dash-led token is the next flag, but a POSIX absolute path ("/home/x") is a value.
+      if (/^--?[A-Za-z]/.test(argv[i + 1])) die("--" + key + " needs a value (got " + argv[i + 1] + ")");
       val = argv[++i];
     }
     flags.set(key, val);
   }
   return flags;
+}
+
+// Boolean switches accept -Force, --force, -Force:$true and -Force:$false.
+function flagOn(flags, ...names) {
+  for (const name of names) {
+    if (!flags.has(name)) continue;
+    const v = flags.get(name);
+    if (typeof v === "string" && /^\$?(false|0|no|off)$/i.test(v.trim())) return false;
+    return true;
+  }
+  return false;
 }
 
 function timestamp() {
@@ -184,9 +200,10 @@ function download(url, dest, timeoutMs) {
         return;
       }
       const out = fs.createWriteStream(dest);
+      out.on("error", reject);
+      res.on("error", reject);
       res.pipe(out);
       out.on("finish", () => out.close(() => resolve()));
-      out.on("error", reject);
     });
     req.on("timeout", () => req.destroy(new Error("timeout")));
     req.on("error", reject);
@@ -207,7 +224,7 @@ function checkSkills(dshHome, agentsHome) {
     if (!fs.existsSync(p)) {
       warn("Missing " + p);
       missing++;
-    } else if (/^disable-model-invocation:\s*true\s*$/m.test(fs.readFileSync(p, "utf8"))) {
+    } else if (/^disable-model-invocation:\s*true\s*$/im.test(fs.readFileSync(p, "utf8"))) {
       warn(p + " still hides the skill from the model");
       flagged++;
     }
@@ -234,7 +251,7 @@ function findSkillDir(root, name) {
 function stripModelInvocationFlag(file) {
   const s = fs.readFileSync(file, "utf8");
   const eol = s.includes("\r\n") ? "\r\n" : "\n";
-  const kept = s.split(/\r?\n/).filter((l) => !/^disable-model-invocation:\s*true\s*$/.test(l));
+  const kept = s.split(/\r?\n/).filter((l) => !/^disable-model-invocation:\s*true\s*$/i.test(l));
   let out = kept.join(eol);
   if (!out.endsWith(eol)) out += eol;
   fs.writeFileSync(file, out, "utf8");
@@ -346,7 +363,8 @@ function cmdInstall(argv) {
   fs.writeFileSync(binCmd, cmdText, "latin1");
   say("OK: " + scriptsDir);
   say("OK: " + binCmd);
-  if (!(process.env.PATH || "").split(path.delimiter).includes(binDir)) {
+  const pathDirs = (process.env.PATH || "").split(path.delimiter).filter(Boolean).map((p) => path.resolve(p).toLowerCase());
+  if (!pathDirs.includes(path.resolve(binDir).toLowerCase())) {
     warn(binDir + " is not on PATH; run the .cmd by full path or add that directory to PATH");
   }
 
@@ -376,6 +394,7 @@ function cmdInstall(argv) {
   if (!checkSkills(dshHome, agentsHome)) { warn("Matt skills are incomplete"); fail = true; }
   if (!fs.existsSync(dstAgents)) { warn("Missing " + dstAgents); fail = true; }
   if (!fs.existsSync(binCmd)) { warn("Missing " + binCmd); fail = true; }
+  if (!fs.existsSync(path.join(scriptsDir, "win-fallback.mjs"))) { warn("Missing win-fallback.mjs"); fail = true; }
   if (!fs.existsSync(path.join(skillDir, "SKILL.md"))) { warn("Missing DSH skill"); fail = true; }
   if (!hasCache(path.join(scriptsDir, "trellis-workflow-matt.md"))) { warn("Missing local workflow cache"); fail = true; }
   if (taskStore && fs.existsSync(taskStore)) {
@@ -406,7 +425,7 @@ function printInitUsage() {
   say("  -Source, --source <gh:o/r>  workflow source (default gh:fanjinchi/trellisWorkflow)");
   say("  -Template, --template <id>  workflow template id (default matt)");
   say("  -Force, --force             switch the workflow of an already initialized project");
-  say("  -Refresh, --refresh         ignore the local cache and fetch the latest workflow");
+  say("  -Refresh, --refresh         ignore the local cache, fetch the latest workflow, and re-apply it to an initialized project");
 }
 
 async function cmdInit(argv) {
@@ -418,8 +437,8 @@ async function cmdInit(argv) {
   const sourceGiven = flags.has("source") || flags.has("s");
   const source = flags.get("source") || flags.get("s") || process.env.TRELLIS_WORKFLOW_SOURCE || "gh:fanjinchi/trellisWorkflow";
   const template = flags.get("template") || flags.get("t") || process.env.TRELLIS_WORKFLOW_TEMPLATE || "matt";
-  const force = flags.has("force") || flags.has("f");
-  const refresh = flags.has("refresh") || flags.has("r");
+  const force = flagOn(flags, "force", "f");
+  const refresh = flagOn(flags, "refresh", "r");
 
   if (!which("trellis")) die("trellis not found; run install.cmd first");
   const python = findPython();
@@ -453,7 +472,7 @@ async function cmdInit(argv) {
   }
 
   let rawBase = "";
-  const gh = /^(?:gh|github):(.+)$/.exec(source);
+  const gh = /^(?:gh|github):(.+)$/i.exec(source);
   if (gh) {
     let repo = gh[1];
     let ref = "main";
@@ -471,7 +490,7 @@ async function cmdInit(argv) {
     fs.copyFileSync(path.join(tmp, "workflow.md"), path.join(".trellis", "workflow.md"));
     const hashPath = path.join(".trellis", ".template-hashes.json");
     if (fs.existsSync(hashPath)) {
-      const data = JSON.parse(fs.readFileSync(hashPath, "utf8"));
+      const data = JSON.parse(fs.readFileSync(hashPath, "utf8").replace(/^\uFEFF/, ""));
       if (data.hashes) delete data.hashes[".trellis/workflow.md"];
       fs.writeFileSync(hashPath, JSON.stringify(data, null, 2) + "\n", "utf8");
     }
@@ -503,7 +522,7 @@ async function cmdInit(argv) {
     for (let i = 0; i < 3; i++) {
       try {
         await download(rawBase + "/index.json", index, 30000);
-        const data = JSON.parse(fs.readFileSync(index, "utf8"));
+        const data = JSON.parse(fs.readFileSync(index, "utf8").replace(/^\uFEFF/, ""));
         const entry = (data.templates || []).find((t) => t.id === template && t.type === "workflow");
         if (entry && entry.path) wfPath = entry.path;
         break;
@@ -606,7 +625,7 @@ async function cmdInit(argv) {
     const patch = path.join(HERE, "patch-task-store.py");
     if (!fs.existsSync(patch)) { warn("patch-task-store.py not found; skipping parent pointer patch"); return; }
     const r = run(python.cmd, [...python.args, patch, target], { capture: true });
-    if (r.status !== 0) warn("parent pointer patch failed: " + target);
+    if (r.status !== 0) die("parent pointer patch failed: " + target + " (template version may be incompatible)");
   };
 
   const verifyWorkflow = (expectMatt) => {
@@ -625,8 +644,8 @@ async function cmdInit(argv) {
 
     let expectMatt = false;
     const wf = path.join(".trellis", "workflow.md");
-    if (fs.existsSync(wf) && !force) {
-      say("Existing workflow kept (use --force to switch)");
+    if (fs.existsSync(wf) && !force && !refresh && !sourceGiven) {
+      say("Existing workflow kept (use --force or --source to switch, --refresh to pull the latest)");
       if (template === "matt" && !fs.readFileSync(wf, "utf8").includes(MARKER)) {
         warn("Current workflow is not the Matt version; use --force to switch");
       }
@@ -634,6 +653,18 @@ async function cmdInit(argv) {
       expectMatt = true;
       if (fs.existsSync(wf)) await switchWorkflow();
       else await initProject();
+    }
+
+    // A fresh clone has no .trellis/.developer (it is gitignored) and the keep branch never
+    // runs trellis init; create it or task.py create fails with "No developer set".
+    if (!fs.existsSync(devFile)) {
+      const initDev = path.join(".trellis", "scripts", "init_developer.py");
+      if (fs.existsSync(initDev)) {
+        say("Creating missing .trellis/.developer for " + user);
+        if (run(python.cmd, [...python.args, initDev, user]).status !== 0) die("failed to create .trellis/.developer");
+      } else {
+        warn("Missing .trellis/.developer and .trellis/scripts/init_developer.py; task.py cannot create tasks");
+      }
     }
 
     refreshDshEntry();
@@ -675,14 +706,12 @@ async function main() {
   }
 }
 
+// Use exitCode instead of process.exit(): process.exit() can truncate piped stdout.
 main().then(
-  (code) => process.exit(code),
+  (code) => { process.exitCode = code; },
   (err) => {
-    if (err instanceof Fail) {
-      console.error("ERROR: " + err.message);
-      process.exit(1);
-    }
-    console.error(err && err.stack ? err.stack : String(err));
-    process.exit(1);
+    if (err instanceof Fail) console.error("ERROR: " + err.message);
+    else console.error(err && err.stack ? err.stack : String(err));
+    process.exitCode = 1;
   },
 );

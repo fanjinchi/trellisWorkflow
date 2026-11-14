@@ -191,7 +191,7 @@ Create new children with `task.py create "<title>" --slug <name> --parent <paren
 [workflow-state:no_task]
 No active task. First classify the current turn and ask for task-creation consent before creating any Trellis task.
 Simple conversation / small task: ask only whether this turn should create a Trellis task. If the user says no, skip Trellis for this session.
-Complex task: ask the user if you can create a Trellis task and enter the planning phase. If the user says no, explain, clarify scope, or suggest a smaller split.
+Complex task: ask the user if you can create a Trellis task and enter the planning phase. If the user says no, explain, clarify scope, or suggest a smaller split. Once consent is yes, grill until requirements, scope, and key decisions are agreed (1.1), then create the task in 1.0.
 [/workflow-state:no_task]
 
 <!-- Per-turn breadcrumb: shown when the active task record cannot be read. -->
@@ -203,7 +203,7 @@ Preserve existing task fields and artifacts. If the correct status cannot be det
 [/workflow-state:task_error]
 
 ### Phase 1: Plan
-- 1.0 Create task `[required · once]` (only after task-creation consent)
+- 1.0 Create task `[required · once]` (only after task-creation consent *and* the 1.1 grill agreement)
 - 1.1 Requirement exploration `[required · repeatable]` (Matt-owned: `grill-with-docs` → `to-spec` → `to-tickets`; `prd.md`; complex tasks also need `design.md` + `implement.md`)
 - 1.2 Research `[optional · repeatable]`
 - 1.3 Configure context `[required · once]` — Claude Code, Cursor, OpenCode, Codex, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Grok, Kimi Code (sub-agent-dispatch platforms only; inline platforms skip)
@@ -378,7 +378,9 @@ Goal: classify the request, get task-creation consent when a task is needed, and
 
 #### 1.0 Create task `[required · once]`
 
-Create the task directory only after task-creation consent. The command sets status to `planning`, writes `task.json`, creates a default `prd.md`, and auto-targets the new task when session identity is available:
+**Prerequisite — grill first.** The global plan gate (`~/.dsh/AGENTS.md`) forbids creating a task or writing a plan document before `grill-with-docs` (or the `grilling` / `grill-me` primitive it drives) has settled requirements, scope, and key decisions with the user. So the order is: task-creation consent → 1.1 grill → agreement → this step. If requirements are not agreed yet, run 1.1's Grill step now and come back here; the task directory is bookkeeping for the agreed plan, not the place where planning starts.
+
+Create the task directory only after task-creation consent *and* that agreement. The command sets status to `planning`, writes `task.json`, creates a default `prd.md`, and auto-targets the new task when session identity is available:
 
 ```bash
 python3 ./.trellis/scripts/task.py create "<task title>" --slug <name>
@@ -398,7 +400,7 @@ Skip when `python3 ./.trellis/scripts/task.py current --source` already points t
 
 Planning is **Matt-owned**; Trellis owns the task lifecycle and the artifact paths. Run the Matt flow in this order and persist its output into the artifacts:
 
-1. **Grill** — load `grill-with-docs` (installed at `~/.agents/skills/`). It runs the `grilling` interview primitive in rounds — every question whose prerequisites are settled, numbered, each with a recommended answer — and keeps a paper trail (`GLOSSARY.md`, ADRs), which is why it beats the stateless `grill-me` inside a repo. Never persist `prd.md` from assumptions; update the artifacts after each confirmed answer.
+1. **Grill** — load `grill-with-docs` (installed at `~/.agents/skills/`). It runs the `grilling` interview primitive in rounds — every question whose prerequisites are settled, numbered, each with a recommended answer — and keeps a paper trail (`GLOSSARY.md`, ADRs), which is why it beats the stateless `grill-me` inside a repo. Never persist `prd.md` from assumptions; update the artifacts after each confirmed answer. If the task does not exist yet, run this grill *before* 1.0 creates it — 1.0 is blocked on the agreement, not the other way round — and re-run it whenever requirements change.
 2. **Research** — step 1.2. Prefer reading the codebase over asking the user.
 3. **Spec** — load `to-spec`; it synthesizes the agreed conversation without re-interviewing. **Tracker override:** the Trellis task directory is the tracker — persist the spec as `{TASK_DIR}/prd.md`, and for complex tasks turn the spec's Implementation Decisions / Testing Decisions / contract sections into `{TASK_DIR}/design.md`. Do not publish a second copy elsewhere. Keep `to-spec`'s section skeleton and add the **Acceptance Criteria** section it lacks.
 4. **Tickets** — load `to-tickets`; it splits the spec into tracer-bullet tickets with declared blocking edges. **Materialize each ticket as a child task** (`task.py create --parent`) instead of `.scratch/` files: the child's `prd.md` carries the ticket body plus its blocking edges. Tickets are the task graph — implement in frontier order; a ticket whose blockers are all done is ready. Apply the single-source rule from "Planning Artifacts": a child that shares a fact with a sibling points at the owner instead of restating it.

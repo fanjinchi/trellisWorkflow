@@ -65,7 +65,7 @@
 - Matt:按当前可用 skill description 路由需求拷问、PRD/issue、实现、TDD、诊断、review、架构和 research，不在全局 rules 复制完整 skill 清单
 - 一个阶段只保留一个 workflow owner；简单工作不建 task，durable/多决策工作才进入 Trellis。
 - Trellis：对已进入 Trellis 生命周期的任务，负责任务状态、planning artifacts、spec/research、跨会话恢复和 archive；详细步骤以项目 workflow 和 Trellis skills 为准。
-- plan 闸门:建立任务、写 spec/tickets 或进入 Trellis planning 之前,必须先加载 grill-me(或 grilling)把需求、范围和关键决策与用户讨论清楚,达成一致后才能建任务或产出 plan 文档;未经 grill 确认的 plan 不进入 Trellis。
+- plan 闸门:建立任务、写 spec/tickets 或进入 Trellis planning 之前,必须先加载 grill-with-docs(在仓库里工作时优先;等价的是 grill-me / grilling)把需求、范围和关键决策与用户讨论清楚,达成一致后才能建任务或产出 plan 文档;未经 grill 确认的 plan 不进入 Trellis。顺序是先 grill、后建任务(workflow 的 1.0 也按这个顺序)。
 - 项目里没有 `.trellis/` 之类的长期记录设施时不主动初始化,除非用户明确要求。
 
 ## DSH × Trellis 入口

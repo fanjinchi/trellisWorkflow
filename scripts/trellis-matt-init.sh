@@ -8,10 +8,10 @@
 #   trellis-matt-init --user alice    # 显式指定 .trellis/.developer 的名字
 #   trellis-matt-init --source gh:me/fork
 #   trellis-matt-init --force         # 已有项目时强制切换 workflow
-#   trellis-matt-init --refresh       # 忽略本地缓存，联网拉最新 workflow
+#   trellis-matt-init --refresh       # 忽略本地缓存，联网拉最新 workflow（已有项目会重新覆盖）
 #
 # 做五件事：
-#   1. 新项目：trellis init --dsh + matt workflow；已有项目：切换 workflow
+#   1. 新项目：trellis init --dsh + matt workflow；已有项目：切换 workflow；缺 .developer 时补建
 #   2. 优先用本地缓存；没有缓存或 --refresh 时才走 marketplace / curl
 #   3. 给 .trellis/scripts/common/task_store.py 打父子 pointer 补丁
 #   4. 把 .dsh/skills/trellis-start 的 review 路由刷成 code-review
@@ -32,7 +32,6 @@ REFRESH=0
 MARKER="Single-source rule (every planning artifact"
 DSH_HOME_DIR="${DSH_HOME:-$HOME/.dsh}"
 LOCAL_WORKFLOW="${TRELLIS_WORKFLOW_CACHE:-$DSH_HOME_DIR/scripts/trellis-workflow-matt.md}"
-SOURCE_LABEL="$SOURCE"
 
 say() { printf '%s\n' "$*"; }
 warn() { printf '⚠  %s\n' "$*" >&2; }
@@ -44,9 +43,10 @@ usage() {
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -u|--user)    [ $# -ge 2 ] || die "--user 需要一个名字"; USER_NAME="$2"; USER_GIVEN=1; shift 2 ;;
-    -s|--source)  [ $# -ge 2 ] || die "--source 需要 gh:owner/repo"; SOURCE="$2"; SOURCE_GIVEN=1; shift 2 ;;
-    -t|--template) [ $# -ge 2 ] || die "--template 需要一个模板 id"; TEMPLATE="$2"; shift 2 ;;
+    # 值参数不能把下一个开关当成值（否则 --user --force 会把开发者名设成 "--force"）。
+    -u|--user)    [ $# -ge 2 ] && [ "${2#-}" = "$2" ] || die "--user 需要一个名字"; USER_NAME="$2"; USER_GIVEN=1; shift 2 ;;
+    -s|--source)  [ $# -ge 2 ] && [ "${2#-}" = "$2" ] || die "--source 需要 gh:owner/repo"; SOURCE="$2"; SOURCE_GIVEN=1; shift 2 ;;
+    -t|--template) [ $# -ge 2 ] && [ "${2#-}" = "$2" ] || die "--template 需要一个模板 id"; TEMPLATE="$2"; shift 2 ;;
     -f|--force)   FORCE=1; shift ;;
     -r|--refresh) REFRESH=1; shift ;;
     -h|--help)    usage; exit 0 ;;
@@ -54,9 +54,11 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# 必须在参数解析之后再取，否则 --source 仍会打印默认来源。
+SOURCE_LABEL="$SOURCE"
+
 command -v trellis >/dev/null 2>&1 || die "没有找到 trellis。先运行仓库里的 scripts/install.sh。"
 command -v python3 >/dev/null 2>&1 || die "需要 python3（Trellis 脚本和补丁都依赖它）"
-command -v curl >/dev/null 2>&1 || die "需要 curl（网络回退时用）"
 
 # 统一在项目根目录执行：优先 git 根，否则当前目录。
 if git rev-parse --show-toplevel >/dev/null 2>&1; then
@@ -92,6 +94,8 @@ trap 'rm -rf "$tmpdir"' EXIT
 
 fetch_workflow_file() {
   [ -n "$RAW_BASE" ] || return 1
+  # curl 只在这个回退路径上需要；本地缓存/离线初始化不应强制安装 curl。
+  command -v curl >/dev/null 2>&1 || die "需要 curl（联网拉取 workflow 时用）"
   local path="" index="$tmpdir/index.json"
 
   if curl -fsSL --retry 3 --retry-delay 2 --max-time 30 "$RAW_BASE/index.json" -o "$index" 2>/dev/null; then
@@ -124,7 +128,7 @@ import json
 from pathlib import Path
 p = Path(".trellis/.template-hashes.json")
 if p.exists():
-    data = json.loads(p.read_text(encoding="utf-8"))
+    data = json.loads(p.read_text(encoding="utf-8-sig"))
     data.get("hashes", {}).pop(".trellis/workflow.md", None)
     p.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 PY
@@ -185,7 +189,8 @@ PY
 patch_task_store() {
   [ -f .trellis/scripts/common/task_store.py ] || return 0
   if [ -f "$SCRIPT_DIR/patch-task-store.py" ]; then
-    python3 "$SCRIPT_DIR/patch-task-store.py" .trellis/scripts/common/task_store.py >/dev/null
+    python3 "$SCRIPT_DIR/patch-task-store.py" .trellis/scripts/common/task_store.py >/dev/null \
+      || die "父子 pointer 补丁失败：.trellis/scripts/common/task_store.py（模板版本可能不兼容）"
   else
     warn "找不到 patch-task-store.py，跳过父子 pointer 补丁"
   fi
@@ -279,8 +284,8 @@ say "项目：$PROJECT_ROOT"
 say "开发者：$USER_NAME（首次初始化时由 --user 决定 .trellis/.developer 与 workspace 目录名）"
 
 EXPECT_MATT=0
-if [ -f .trellis/workflow.md ] && [ "$FORCE" -eq 0 ]; then
-  say "→ 已有 workflow，保持不变（要强制切换加 --force）"
+if [ -f .trellis/workflow.md ] && [ "$FORCE" -eq 0 ] && [ "$REFRESH" -eq 0 ] && [ "$SOURCE_GIVEN" -eq 0 ]; then
+  say "→ 已有 workflow，保持不变（要强制切换加 --force 或 --source；要拉最新加 --refresh）"
   if [ "$TEMPLATE" = "matt" ] && ! grep -qF "$MARKER" .trellis/workflow.md; then
     warn "当前 workflow 不是 Matt 版；保持原样。要切换请加 --force。"
   fi
@@ -290,6 +295,18 @@ else
     switch_workflow
   else
     init_project
+  fi
+fi
+
+# fresh clone 时 .trellis/.developer 被 gitignore；keep 分支不会跑 trellis init，
+# 这里统一补建，否则之后的 task.py create 会报 "No developer set"。
+if [ ! -f .trellis/.developer ]; then
+  if [ -f .trellis/scripts/init_developer.py ]; then
+    say "→ 缺少 .trellis/.developer（常见于 fresh clone），补建：$USER_NAME"
+    python3 .trellis/scripts/init_developer.py "$USER_NAME" >/dev/null \
+      || die "补建 .trellis/.developer 失败"
+  else
+    warn "缺少 .trellis/.developer，且找不到 .trellis/scripts/init_developer.py；task.py 将无法创建任务"
   fi
 fi
 

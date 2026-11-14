@@ -5,7 +5,8 @@
 
 .DESCRIPTION
   Uses the workflow cached by install.ps1 by default (offline). Pass -Refresh
-  or -Source to fetch from GitHub. Falls back to a direct download when the
+  or -Source to fetch from GitHub; -Refresh also re-applies the latest workflow
+  to a project that already has one. Falls back to a direct download when the
   marketplace is slow, and to the local cache when the network is unavailable.
 
   Examples:
@@ -56,7 +57,11 @@ if (-not (Get-Command trellis -ErrorAction SilentlyContinue)) {
 }
 
 if (Get-Command git -ErrorAction SilentlyContinue) {
-    $gitRoot = & git rev-parse --show-toplevel 2>$null
+    # With $ErrorActionPreference = "Stop", PS 5.1 may turn the redirected stderr of a
+    # failing native command into a terminating NativeCommandError; swallow it here so a
+    # non-git directory only produces the warning below instead of aborting.
+    $gitRoot = $null
+    try { $gitRoot = & git rev-parse --show-toplevel 2>$null } catch { $gitRoot = $null }
     if ($LASTEXITCODE -eq 0 -and $gitRoot) { Set-Location $gitRoot }
 }
 $ProjectRoot = (Get-Location).Path
@@ -76,7 +81,7 @@ if (-not (Test-Path ".git")) {
 
 $devFile = ".trellis\.developer"
 if (Test-Path $devFile) {
-    $line = Get-Content $devFile | Where-Object { $_ -match '^name=' } | Select-Object -First 1
+    $line = Get-Content $devFile -Encoding UTF8 | Where-Object { $_ -match '^name=' } | Select-Object -First 1
     if ($line) {
         $currentDev = $line.Substring(5).Trim()
         if ($UserGiven -and $currentDev -ne $User) {
@@ -241,6 +246,7 @@ function Patch-TaskStore {
     $patch = Join-Path $PSScriptRoot "patch-task-store.py"
     if (Test-Path $patch) {
         & $Python @PythonArgs $patch $target | Out-Null
+        if ($LASTEXITCODE -ne 0) { Write-Die "parent pointer patch failed: $target (template version may be incompatible)" }
     } else {
         Write-Warn "patch-task-store.py not found; skipping parent pointer patch"
     }
@@ -260,14 +266,28 @@ try {
     Write-Say "Developer: $User (first init only; -User sets .trellis\.developer)"
 
     $script:ExpectMatt = $false
-    if ((Test-Path ".trellis\workflow.md") -and -not $Force) {
-        Write-Say "Existing workflow kept (use -Force to switch)"
+    if ((Test-Path ".trellis\workflow.md") -and -not $Force -and -not $Refresh -and -not $SourceGiven) {
+        Write-Say "Existing workflow kept (use -Force or -Source to switch, -Refresh to pull the latest)"
         if ($Template -eq "matt" -and -not (Test-MattWorkflow)) {
             Write-Warn "Current workflow is not the Matt version; use -Force to switch"
         }
     } else {
         $script:ExpectMatt = $true
         if (Test-Path ".trellis\workflow.md") { Invoke-Switch } else { Invoke-Init }
+    }
+
+    # A fresh clone has no .trellis/.developer (it is gitignored). The keep branch never
+    # runs trellis init, so create it here; otherwise task.py create fails with
+    # "No developer set".
+    if (-not (Test-Path ".trellis\.developer")) {
+        $initDev = ".trellis\scripts\init_developer.py"
+        if (Test-Path $initDev) {
+            Write-Say "Creating missing .trellis/.developer for $User"
+            & $Python @PythonArgs $initDev $User | Out-Null
+            if ($LASTEXITCODE -ne 0) { Write-Die "failed to create .trellis/.developer" }
+        } else {
+            Write-Warn "Missing .trellis/.developer and .trellis\scripts\init_developer.py; task.py cannot create tasks"
+        }
     }
 
     Refresh-DshEntry

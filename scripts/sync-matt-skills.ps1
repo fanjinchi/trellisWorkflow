@@ -83,7 +83,11 @@ New-Item -ItemType Directory -Force -Path (Join-Path $DshHome "skills") | Out-Nu
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("matt-skills-" + [guid]::NewGuid().ToString("N"))
 try {
     Write-Say "Downloading Matt skills ($MattRef)..."
-    & git clone --depth 1 --branch $MattRef $MattRepo $tmp 2>&1 | Out-Null
+    # Do not redirect native stderr here: with $ErrorActionPreference = "Stop",
+    # PowerShell 5.1 turns captured stderr lines (git's "Cloning into ...") into
+    # terminating NativeCommandErrors, which aborts the install even when the
+    # clone itself succeeds.
+    & git clone --depth 1 --branch $MattRef $MattRepo $tmp | Out-Null
     if ($LASTEXITCODE -ne 0) { Write-Die "git clone failed: $MattRepo" }
 
     $copied = 0
