@@ -79,13 +79,12 @@ Trellis 把 dsh 定义为 **class-2 pull 型平台**：只写 `.dsh/skills/`、`
 ### `install.sh` / `install.ps1` 具体做了什么
 
 1. 安装/校验 `@mindfoldhq/trellis@0.6.17`
-2. `git clone` Matt skills → `~/.agents/skills`（只装 workflow 用到的 23 个）
-3. 复制其中 12 个带 `disable-model-invocation: true` 的技能到 `~/.dsh/skills` 并去掉该行（DSH 会隐藏带这行的技能）
-4. 安装 `~/.dsh/AGENTS.md`（已有文件先备份为 `AGENTS.md.bak.<时间>`）
-5. 安装 `~/.dsh/scripts/` 与 `~/.local/bin/trellis-matt-init`（Windows：`%USERPROFILE%\.local\bin\trellis-matt-init.cmd`）
-6. 安装 dsh 技能 `~/.dsh/skills/trellis-matt-init`
-7. 给 npm 包内的 `task_store.py` 模板打父子 pointer 补丁
-8. 把 `workflows/matt/workflow.md` 缓存到 `~/.dsh/scripts/trellis-workflow-matt.md`，之后初始化项目默认离线使用
+2. `git clone` Matt skills → `~/.agents/skills`（只装 workflow 用到的 23 个），再把其中 12 个带 `disable-model-invocation: true` 的技能复制到 `~/.dsh/skills` 并去掉该行（DSH 会隐藏带这行的技能）
+3. 安装 `~/.dsh/AGENTS.md`（已有文件先备份为 `AGENTS.md.bak.<时间>`）
+4. 安装 `~/.dsh/scripts/` 与 `~/.local/bin/trellis-matt-init`（Windows：`%USERPROFILE%\.local\bin\trellis-matt-init.cmd`），并把 `workflows/matt/workflow.md` 缓存到 `~/.dsh/scripts/trellis-workflow-matt.md`（之后初始化项目默认离线使用）
+5. 安装 dsh 技能 `~/.dsh/skills/trellis-matt-init`
+6. 给 npm 包内的 `task_store.py` 模板打父子 pointer 补丁
+7. 逐项验证上面这些产物（workflow 缓存非空、宏脚本可执行等；Windows 版还会检查 `win-fallback.mjs`）
 
 Windows 的 `install.ps1` 做同样的事，只是路径和命令换成 PowerShell 版本。
 
@@ -149,7 +148,7 @@ workflow 必须保留这些解析标记：`## Phase Index`、`#### X.Y` 步骤�
 
 ## 更新与固定版本
 
-- **改 workflow 模板**：编辑 `workflows/matt/workflow.md`，提交后重跑 `install.sh` / `install.ps1` 刷新本地缓存；项目里用 `trellis-matt-init --force`（Windows：`-Force`）或 `--refresh` 切换。
+- **改 workflow 模板**：编辑 `workflows/matt/workflow.md`，提交后重跑 `install.sh` / `install.ps1` 刷新本地缓存；项目里用 `trellis-matt-init --force`（Windows：`-Force`）切换模板，换 fork 用 `--source`；用 `--refresh`（Windows：`-Refresh`）重新拉取最新 workflow——**已初始化的项目也会被覆盖**（`--force` / `--source` / `--refresh` 任一出现都会重新应用，不再"保持不变"）。
 - **更新 Matt skills**：`bash ~/.dsh/scripts/sync-matt-skills.sh`（Windows PowerShell：`powershell -File "$env:USERPROFILE\.dsh\scripts\sync-matt-skills.ps1"`；PowerShell 不可用时在 cmd 里 `node "%USERPROFILE%\.dsh\scripts\win-fallback.mjs" sync`）。
 - **固定版本**：`gh:fanjinchi/trellisWorkflow#v1`（分支或 tag 均可）。
 - Trellis 升级后：重跑 `install.sh` 重新打模板补丁；若 `trellis update` 覆盖了项目里的 `task_store.py`，重跑 `patch-task-store.py`。

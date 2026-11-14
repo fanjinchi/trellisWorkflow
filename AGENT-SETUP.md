@@ -123,7 +123,7 @@ trellis-matt-init.cmd -User <开发者的名字>
 - `--user` / `-User` 决定 `.trellis/.developer` 和 `.trellis/workspace/<名字>/`。**一定要提醒用户显式设置**；不传时宏会退回 `git config user.name`，再退回系统用户名。
 - `--user` 只在**首次初始化**生效：已有 `.trellis/.developer` 的项目，宏会保留原身份并提示；确实要换身份就先删 `.trellis/.developer` 再重跑（旧 workspace 目录保留）。
 - 默认 workflow 来源是 `gh:fanjinchi/trellisWorkflow`（用户自己的仓库）。换 fork 用 `--source gh:owner/repo`（Windows：`-Source`）。
-- **默认用本地缓存，不联网。** 想拉最新 workflow 加 `--refresh`（Windows：`-Refresh`）。
+- **默认用本地缓存，不联网。** 想拉最新 workflow 加 `--refresh`（Windows：`-Refresh`）：它会重新拉取并覆盖当前 workflow，**已初始化的项目同样生效**。
 - 已有 `.trellis/` 的项目默认保持原 workflow；确认要切换成 matt 才加 `--force`（Windows：`-Force`）。
 - 新项目会执行 `trellis init --dsh`，只装 dsh 平台文件。
 

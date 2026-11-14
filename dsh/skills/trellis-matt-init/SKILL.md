@@ -33,7 +33,7 @@ description: 一键把当前项目初始化为 Matt × Trellis workflow（trelli
    node "%USERPROFILE%\.dsh\scripts\win-fallback.mjs" init -User "<名字>"
    ```
 
-   已有 `.trellis/` 且用户确认要换成 matt 时加 `--force`（Windows：`-Force`）。默认来源是 `gh:fanjinchi/trellisWorkflow`，需要换 fork 时加 `--source gh:owner/repo`（Windows：`-Source`）。默认用本地缓存、不联网；要拉最新加 `--refresh`（Windows：`-Refresh`）。
+   已有 `.trellis/` 且用户确认要换成 matt 时加 `--force`（Windows：`-Force`）。默认来源是 `gh:fanjinchi/trellisWorkflow`，需要换 fork 时加 `--source gh:owner/repo`（Windows：`-Source`）。默认用本地缓存、不联网；要拉最新加 `--refresh`（Windows：`-Refresh`，会重新拉取并覆盖当前 workflow，已初始化的项目也生效）。
 5. 按输出逐项验证：
    - `.trellis/workflow.md` 含 `Single-source rule (every planning artifact`
    - `python3 .trellis/scripts/get_context.py --mode phase` 能输出 Phase Index
