@@ -380,7 +380,7 @@ Goal: classify the request, get task-creation consent when a task is needed, and
 
 #### 1.0 Create task `[required · once]`
 
-**Prerequisite — grill first.** The global plan gate (`~/.dsh/AGENTS.md`) forbids creating a task or writing a plan document before `grill-with-docs` (or the `grilling` / `grill-me` primitive it drives) has settled requirements, scope, and key decisions with the user. So the order is: task-creation consent → 1.1 grill → agreement → this step. If requirements are not agreed yet, run 1.1's Grill step now and come back here; the task directory is bookkeeping for the agreed plan, not the place where planning starts.
+**Prerequisite — grill first.** The host global plan gate (`~/.dsh/AGENTS.md` on DSH, `~/.kimi-code/AGENTS.md` on Kimi Code) forbids creating a task or writing a plan document before `grill-with-docs` (or the `grilling` / `grill-me` primitive it drives) has settled requirements, scope, and key decisions with the user. So the order is: task-creation consent → 1.1 grill → agreement → this step. If requirements are not agreed yet, run 1.1's Grill step now and come back here; the task directory is bookkeeping for the agreed plan, not the place where planning starts.
 
 Create the task directory only after task-creation consent *and* that agreement. The command sets status to `planning`, writes `task.json`, creates a default `prd.md`, and auto-targets the new task when session identity is available:
 
