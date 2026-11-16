@@ -308,7 +308,7 @@ function cmdInstall(argv) {
     say("Usage: node win-fallback.mjs install [--trellis-version 0.6.17] [--dsh-home DIR] [--agents-home DIR] [--bin-dir DIR]");
     return 0;
   }
-  if (!fs.existsSync(path.join(REPO, "dsh", "AGENTS.md"))) {
+  if (!fs.existsSync(path.join(REPO, "dsh", "global-rules.md"))) {
     die("run install from the repository checkout (node scripts/win-fallback.mjs install), not from the installed copy");
   }
   const trellisVersion = flags.get("trellisversion") || TRELLIS_VERSION;
@@ -339,7 +339,7 @@ function cmdInstall(argv) {
 
   step("3/7 Global rules");
   mkdirp(dshHome);
-  const srcAgents = path.join(REPO, "dsh", "AGENTS.md");
+  const srcAgents = path.join(REPO, "dsh", "global-rules.md");
   const dstAgents = path.join(dshHome, "AGENTS.md");
   if (fs.existsSync(dstAgents) && !sameFile(srcAgents, dstAgents)) {
     const backup = dstAgents + ".bak." + timestamp();
@@ -347,7 +347,8 @@ function cmdInstall(argv) {
     say("Backed up existing global rules to " + backup);
   }
   fs.copyFileSync(srcAgents, dstAgents);
-  say("OK: " + dstAgents);
+  fs.copyFileSync(path.join(REPO, "dsh", "rules-design.md"), path.join(dshHome, "rules-design.md"));
+  say("OK: " + dstAgents + " (+ rules-design.md)");
 
   step("4/7 Macro and helper scripts");
   const scriptsDir = path.join(dshHome, "scripts");

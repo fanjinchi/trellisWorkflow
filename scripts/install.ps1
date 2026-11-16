@@ -76,7 +76,7 @@ if ($LASTEXITCODE -ne 0) { Write-Die "Matt skills sync failed" }
 
 Write-Step "3/7 Global rules"
 New-Item -ItemType Directory -Force -Path $DshHome | Out-Null
-$srcAgents = Join-Path $RepoDir "dsh\AGENTS.md"
+$srcAgents = Join-Path $RepoDir "dsh\global-rules.md"
 $dstAgents = Join-Path $DshHome "AGENTS.md"
 if ((Test-Path $dstAgents) -and ((Get-FileHash $srcAgents).Hash -ne (Get-FileHash $dstAgents).Hash)) {
     $backup = "$dstAgents.bak." + (Get-Date -Format "yyyyMMdd-HHmmss")
@@ -84,7 +84,8 @@ if ((Test-Path $dstAgents) -and ((Get-FileHash $srcAgents).Hash -ne (Get-FileHas
     Write-Say "Backed up existing global rules to $backup"
 }
 Copy-Item -Force $srcAgents $dstAgents
-Write-Say "OK: $dstAgents"
+Copy-Item -Force (Join-Path $RepoDir "dsh\rules-design.md") (Join-Path $DshHome "rules-design.md")
+Write-Say "OK: $dstAgents (+ rules-design.md)"
 
 Write-Step "4/7 Macro and helper scripts"
 $scriptsDir = Join-Path $DshHome "scripts"

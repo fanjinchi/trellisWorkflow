@@ -219,7 +219,8 @@ grep -c "disable-model-invocation" ~/.dsh/skills/implement/SKILL.md   # 期望�
 ```bash
 mkdir -p ~/.dsh
 [ -f ~/.dsh/AGENTS.md ] && cp ~/.dsh/AGENTS.md ~/.dsh/AGENTS.md.bak.$(date +%Y%m%d-%H%M%S)
-cp dsh/AGENTS.md ~/.dsh/AGENTS.md
+cp dsh/global-rules.md ~/.dsh/AGENTS.md
+cp dsh/rules-design.md ~/.dsh/rules-design.md
 grep -q "DSH × Trellis 入口" ~/.dsh/AGENTS.md && echo AGENTS_OK
 ```
 
@@ -342,7 +343,8 @@ Select-String -Path (Join-Path $dshSkills "implement\SKILL.md") -Pattern "disabl
 New-Item -ItemType Directory -Force -Path (Join-Path $HOME ".dsh") | Out-Null
 $dst = Join-Path $HOME ".dsh\AGENTS.md"
 if (Test-Path $dst) { Copy-Item $dst "$dst.bak.$(Get-Date -Format yyyyMMdd-HHmmss)" }
-Copy-Item -Force "dsh\AGENTS.md" $dst
+Copy-Item -Force "dsh\global-rules.md" $dst
+Copy-Item -Force "dsh\rules-design.md" (Join-Path (Split-Path $dst) "rules-design.md")
 Select-String -Path $dst -Pattern "DSH × Trellis 入口" -Quiet   # 期望：True
 ```
 

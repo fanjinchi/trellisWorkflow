@@ -61,15 +61,16 @@ command -v trellis >/dev/null 2>&1 || die "trellis 安装后仍不在 PATH；把
 step "2/7 Matt skills"
 bash "$REPO_DIR/scripts/sync-matt-skills.sh"
 
-step "3/7 全局规则 ~/.dsh/AGENTS.md"
+step "3/7 全局规则 ~/.dsh/AGENTS.md + 设计细则"
 mkdir -p "$DSH_HOME"
-if [ -f "$DSH_HOME/AGENTS.md" ] && ! cmp -s "$REPO_DIR/dsh/AGENTS.md" "$DSH_HOME/AGENTS.md"; then
+if [ -f "$DSH_HOME/AGENTS.md" ] && ! cmp -s "$REPO_DIR/dsh/global-rules.md" "$DSH_HOME/AGENTS.md"; then
   backup="$DSH_HOME/AGENTS.md.bak.$(date +%Y%m%d-%H%M%S)"
   cp "$DSH_HOME/AGENTS.md" "$backup"
   say "已备份原有全局规则 → $backup"
 fi
-cp "$REPO_DIR/dsh/AGENTS.md" "$DSH_HOME/AGENTS.md"
-say "✅ $DSH_HOME/AGENTS.md"
+cp "$REPO_DIR/dsh/global-rules.md" "$DSH_HOME/AGENTS.md"
+cp "$REPO_DIR/dsh/rules-design.md" "$DSH_HOME/rules-design.md"
+say "✅ $DSH_HOME/AGENTS.md (+ rules-design.md)"
 
 step "4/7 初始化宏与辅助脚本"
 mkdir -p "$DSH_HOME/scripts"
@@ -112,6 +113,7 @@ fail=0
 trellis --version >/dev/null 2>&1 || { warn "trellis 不可用"; fail=1; }
 bash "$REPO_DIR/scripts/sync-matt-skills.sh" --check >/dev/null 2>&1 || { warn "Matt skills 不齐"; fail=1; }
 [ -f "$DSH_HOME/AGENTS.md" ] || { warn "缺少 $DSH_HOME/AGENTS.md"; fail=1; }
+[ -f "$DSH_HOME/rules-design.md" ] || { warn "缺少 $DSH_HOME/rules-design.md"; fail=1; }
 [ -x "$BIN_DIR/trellis-matt-init" ] || { warn "缺少 $BIN_DIR/trellis-matt-init"; fail=1; }
 [ -f "$DSH_HOME/skills/trellis-matt-init/SKILL.md" ] || { warn "缺少 dsh 技能 trellis-matt-init"; fail=1; }
 [ -s "$DSH_HOME/scripts/trellis-workflow-matt.md" ] || { warn "缺少本地 workflow 缓存"; fail=1; }

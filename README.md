@@ -39,7 +39,8 @@ Windows 用 `trellis-matt-init.cmd -User <名字>`。就这两条。之后在该
 ## 目录
 
 - `AGENT-SETUP.md` — 给 Agent 的部署指引（步骤、验证、故障排查）
-- `dsh/AGENTS.md` — 全局规则，安装到 `~/.dsh/AGENTS.md`
+- `dsh/global-rules.md` — 全局规则，安装到 `~/.dsh/AGENTS.md`（刻意不叫 AGENTS.md，避免在仓库里被当项目级指令二次注入）
+- `dsh/rules-design.md` — 设计与调试细则，按需读，不进常驻上下文
 - `dsh/skills/trellis-matt-init/SKILL.md` — dsh 技能，用户说「初始化这个项目」时触发
 - `scripts/install.sh` — Linux/macOS 机器级安装（Trellis、Matt skills、dsh 副本、全局规则、宏、模板补丁、workflow 缓存）
 - `scripts/trellis-matt-init.sh` — Linux/macOS 项目级一键初始化宏
@@ -65,7 +66,7 @@ Windows 用 `trellis-matt-init.cmd -User <名字>`。就这两条。之后在该
 
 Trellis 把 dsh 定义为 **class-2 pull 型平台**：只写 `.dsh/skills/`、`.agents/skills/` 和 `.dsh/DSH.md`，**不写 session hook**。所以每个新会话不会自动注入 workflow 状态，需要加载 `trellis-start` 技能。npm 最新版仍是 0.6.17（2026-11 核对），上游 main 的后续提交也没有加 dsh hook。
 
-本仓库的替代方案：`dsh/AGENTS.md` 里加了一条全局规则——进入含 `.trellis/` 的项目，每个新会话先加载 `trellis-start`。效果等价于 SessionStart hook，成本是一次技能加载。
+本仓库的替代方案：`dsh/global-rules.md` 里加了一条全局规则——进入含 `.trellis/` 的项目，每个新会话先加载 `trellis-start`。效果等价于 SessionStart hook，成本是一次技能加载。
 
 ## 安装细节
 
