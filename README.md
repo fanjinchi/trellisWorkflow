@@ -58,7 +58,7 @@ Windows 用 `trellis-matt-init.cmd -User <名字>`。就这两条。之后在该
 - **单一事实源**：每个事实（公式/阈值/配置键/契约/决策）只在一个产物里写全，其它处只写指针；AC 可复述字面值，散文不行；`file:line`、grep 输出、代码清单进 `research/` 或检查脚本，不进规划产物；任务目录就是 tracker，不再同时写 bd
 - **父子 pointer 通道**：父任务持有跨 child 不变式，child 只写 `upstream contract: <parent>/design.md §n` 指针；补丁后 `task.py create --parent` 会自动把 `## Upstream Contracts` 种进 child 的 `prd.md`
 - **技能路由表**：workflow 自带「意图 → Matt skill」表；只有表里没有的才去 `ask-matt` 路由
-- **实施与审查**：Phase 2 用 Matt `implement` / `implement-spec` + `tdd`；`code-review` 做 Standards + Spec 双轴审查
+- **实施与审查**：Phase 2 用 Matt `implement` / `implement-spec` + `tdd`（dsh 主会话）或 Trellis `trellis-implement` + Matt `tdd` 纪律（Kimi/Pi）；审查用 `code-review`（dsh）或 `trellis-check`（Kimi/Pi）
 - **收尾**：保留 Trellis 的 `trellis-update-spec` spec 回写与 Phase 3.4 commit 闸门
 
 ## dsh 上没有 session hook（0.6.17 仍然如此）
