@@ -113,7 +113,7 @@ trellis init --dsh --yes --user alice \
 - `--refresh`：忽略本地缓存，联网拉最新 workflow（Windows：`-Refresh`）。
 - **默认离线**：优先用 `~/.dsh/scripts/trellis-workflow-matt.md` 缓存，不连 GitHub；没有缓存或加 `--refresh` 才走 marketplace / curl。
 - 网络失败：宏重试 3 次 → 退回 `trellis init` 原生结构 + `curl` 直取 `workflow.md` + 从 `.template-hashes.json` 移除该文件（防止 `trellis update` 覆盖）→ 再失败就退回本地缓存。
-- 宏还会顺手把 `.dsh/skills/trellis-start` 快捷表里的 review 路由从上游遗留的 `trellis-check` 刷成 `code-review`，与 workflow 保持一致。
+- 宏还会顺手把 `.dsh/skills/trellis-start` 里两处上游遗留刷成 Matt 版：快捷表的 review 路由 `trellis-check` → `code-review`，description 里的 `brainstorm` → `grill-with-docs`。
 
 ### 手动初始化（不用宏）
 

@@ -616,7 +616,9 @@ async function cmdInit(argv) {
     const f = path.join(".dsh", "skills", "trellis-start", "SKILL.md");
     if (!fs.existsSync(f)) return;
     const s = fs.readFileSync(f, "utf8");
-    const next = s.replace("| Done coding / quality check | \u0060trellis-check\u0060 |", "| Done coding / quality check | \u0060code-review\u0060 |");
+    const next = s
+      .replace("| Done coding / quality check | \u0060trellis-check\u0060 |", "| Done coding / quality check | \u0060code-review\u0060 |")
+      .replace("routes to brainstorm, direct edit, or task workflow", "routes to grill-with-docs, direct edit, or task workflow");
     if (next !== s) fs.writeFileSync(f, next, "utf8");
   };
 

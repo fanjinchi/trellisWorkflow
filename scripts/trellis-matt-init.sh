@@ -169,7 +169,8 @@ verify_workflow() {
 }
 
 refresh_dsh_entry() {
-  # 上游 dsh 模板的 trellis-start 快捷表仍把 review 指向已退休的 trellis-check。
+  # 上游 dsh 模板的 trellis-start 有两处与 Matt 流程不符：
+  # 快捷表把 review 指向已退休的 trellis-check；description 仍写已不用的 brainstorm。
   local f=".dsh/skills/trellis-start/SKILL.md"
   [ -f "$f" ] || return 0
   python3 - "$f" <<'PY'
@@ -180,6 +181,9 @@ s = p.read_text(encoding="utf-8")
 new = s.replace(
     "| Done coding / quality check | `trellis-check` |",
     "| Done coding / quality check | `code-review` |",
+).replace(
+    "routes to brainstorm, direct edit, or task workflow",
+    "routes to grill-with-docs, direct edit, or task workflow",
 )
 if new != s:
     p.write_text(new, encoding="utf-8")

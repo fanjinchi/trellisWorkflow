@@ -134,6 +134,7 @@ grep -c "Single-source rule (every planning artifact" .trellis/workflow.md   # �
 python3 .trellis/scripts/get_context.py --mode phase | head -3               # 期望：## Phase Index
 grep -c "parent_name" .trellis/scripts/common/task_store.py                  # 期望：≥1
 grep -c "trellis-check" .dsh/skills/trellis-start/SKILL.md                    # 期望：0（review 已指向 code-review）
+grep -c "brainstorm" .dsh/skills/trellis-start/SKILL.md                       # 期望：0（description 已指向 grill-with-docs）
 cat .trellis/.developer                                                       # 期望：name=<你传的名字>
 ```
 
@@ -271,6 +272,8 @@ if p.exists():
     s = p.read_text(encoding="utf-8")
     n = s.replace("| Done coding / quality check | `trellis-check` |",
                   "| Done coding / quality check | `code-review` |")
+    n = n.replace("routes to brainstorm, direct edit, or task workflow",
+                  "routes to grill-with-docs, direct edit, or task workflow")
     if n != s:
         p.write_text(n, encoding="utf-8")
 PY
@@ -403,6 +406,7 @@ $start = ".dsh\skills\trellis-start\SKILL.md"
 if (Test-Path $start) {
   $s = [IO.File]::ReadAllText($start)
   $n = $s.Replace('| Done coding / quality check | `trellis-check` |', '| Done coding / quality check | `code-review` |')
+  $n = $n.Replace('routes to brainstorm, direct edit, or task workflow', 'routes to grill-with-docs, direct edit, or task workflow')
   if ($n -ne $s) { [IO.File]::WriteAllText($start, $n, (New-Object System.Text.UTF8Encoding($false))) }
 }
 python .trellis\scripts\get_context.py --mode phase | Select-Object -First 3   # 期望：## Phase Index

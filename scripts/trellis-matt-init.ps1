@@ -235,6 +235,7 @@ function Refresh-DshEntry {
     if (-not (Test-Path $f)) { return }
     $s = [IO.File]::ReadAllText($f)
     $new = $s.Replace('| Done coding / quality check | `trellis-check` |', '| Done coding / quality check | `code-review` |')
+    $new = $new.Replace('routes to brainstorm, direct edit, or task workflow', 'routes to grill-with-docs, direct edit, or task workflow')
     if ($new -ne $s) {
         [IO.File]::WriteAllText($f, $new, (New-Object System.Text.UTF8Encoding($false)))
     }
