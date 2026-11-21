@@ -54,7 +54,6 @@
 
 - DSH 是 pull 型宿主：当前 Trellis 不给 dsh 安装 session hook，也没有等价的自动注入。所以进入含 `.trellis/` 的项目后，每个新会话先加载 `trellis-start`（它读当前任务状态并路由），不凭记忆猜阶段。
 - `trellis-start` 是每个会话的固定入口，它只做路由，不等于要建任务：Inline 小修照样加载完直接做。
-- 续做已有任务加载 `trellis-continue`；收尾/归档加载 `trellis-finish-work`。
 
 ## 派子代理
 
